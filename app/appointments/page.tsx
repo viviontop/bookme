@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Calendar, Clock, MapPin, Star, Check, X, MessageCircle, CreditCard } from "lucide-react"
+import { Calendar, Clock, MapPin, Star, Check, X, MessageCircle, CreditCard, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PaymentDialog } from "@/components/payment-dialog"
 
@@ -227,11 +227,28 @@ export default function AppointmentsPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background">
       <div className="mx-auto max-w-5xl px-4 py-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Appointments</h1>
-          <p className="mt-1 text-muted-foreground">
-            {user.role === "buyer" ? "Manage your bookings" : "Manage your client appointments"}
-          </p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Appointments</h1>
+            <p className="mt-1 text-muted-foreground">
+              {user.role === "buyer" ? "Manage your bookings" : "Manage your client appointments"}
+            </p>
+          </div>
+          {user.role === "buyer" && (
+            <Link href="/search">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Book Appointment
+              </Button>
+            </Link>
+          )}
+          {user.role === "seller" && (
+            <Link href="/appointments/seller">
+              <Button variant="outline">
+                Manage Requests
+              </Button>
+            </Link>
+          )}
         </div>
 
         <Tabs defaultValue="upcoming">
