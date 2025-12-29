@@ -115,20 +115,41 @@ pnpm dev
 
 ## Deployment
 
-### Deploy to Vercel (Recommended)
+### ⚠️ Important: GitHub Pages Won't Work!
 
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Import your GitHub repository
-4. Click "Deploy"
+**GitHub Pages only serves static HTML files** and cannot run Next.js applications. You **must** use a platform that supports Node.js.
 
-### Deploy to Netlify
+### Deploy to Vercel (Recommended - FREE)
 
-1. Push your code to GitHub
-2. Go to [netlify.com](https://netlify.com)
-3. Import your GitHub repository
-4. Build command: `npm run build`
-5. Publish directory: `.next`
+Vercel is made by the creators of Next.js and is the best option:
+
+1. **Go to**: https://vercel.com
+2. **Sign in** with your GitHub account
+3. Click **"Add New..."** → **"Project"**
+4. **Import** your `viviontop/bookme` repository
+5. Click **"Deploy"** (settings are auto-detected)
+6. **Wait 2-3 minutes** - your site will be live!
+
+Your website will be at: `https://bookme-xyz.vercel.app`
+
+### Deploy to Netlify (Alternative - FREE)
+
+1. **Go to**: https://netlify.com
+2. **Sign in** with your GitHub account
+3. Click **"Add new site"** → **"Import an existing project"**
+4. Select `viviontop/bookme`
+5. **Build settings**:
+   - Build command: `npm run build`
+   - Publish directory: `.next`
+6. Click **"Deploy site"**
+
+### Why Not GitHub Pages?
+
+- GitHub Pages = Static HTML only
+- Next.js = Needs Node.js server + build process
+- **They're incompatible!**
+
+See `DEPLOY_TO_VERCEL.md` for detailed instructions.
 
 ## License
 
