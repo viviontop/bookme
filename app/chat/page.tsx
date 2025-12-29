@@ -1,17 +1,10 @@
+"use client"
+
 import { Suspense } from "react"
 import { MessageCircle } from "lucide-react"
 import { ChatContent } from "./chat-content"
 
-// Force dynamic rendering to prevent prerendering issues with useSearchParams
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-export const dynamicParams = true
-
-export default function ChatPage({
-  searchParams,
-}: {
-  searchParams: { userId?: string }
-}) {
+export default function ChatPage() {
   return (
     <Suspense fallback={
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
@@ -21,7 +14,7 @@ export default function ChatPage({
         </div>
       </div>
     }>
-      <ChatContent initialUserId={searchParams?.userId} />
+      <ChatContent />
     </Suspense>
   )
 }

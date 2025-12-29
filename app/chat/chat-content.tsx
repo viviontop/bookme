@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState, useRef, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState, useRef, useMemo, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useData } from "@/lib/data-context"
 import { useMessaging } from "@/lib/messaging-context"
@@ -13,24 +13,26 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageCircle, Send, Search } from "lucide-react"
 import Link from "next/link"
 
-export function ChatContent({ initialUserId }: { initialUserId?: string }) {
+function ChatWithParams() {
   const { user } = useAuth()
   const { users } = useData()
   const { conversations, messages, getMessages, sendMessage, markAsRead, getUnreadCount } = useMessaging()
   const router = useRouter()
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserId || null)
+  const searchParams = useSearchParams()
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [messageInput, setMessageInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Check for userId in URL params (from server component)
+  // Check for userId in URL params
   useEffect(() => {
-    if (initialUserId && users.some((u) => u.id === initialUserId)) {
-      setSelectedUserId(initialUserId)
+    const userId = searchParams.get("userId")
+    if (userId && users.some((u) => u.id === userId)) {
+      setSelectedUserId(userId)
       // Clean up URL
       router.replace("/chat", { scroll: false })
     }
-  }, [initialUserId, users, router])
+  }, [searchParams, users, router])
 
   const conversationIdRef = useRef<string | null>(null)
   
@@ -276,6 +278,21 @@ export function ChatContent({ initialUserId }: { initialUserId?: string }) {
         )}
       </div>
     </div>
+  )
+}
+
+export function ChatContent() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        <div className="text-center">
+          <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground animate-pulse" />
+          <p className="mt-4 text-muted-foreground">Loading messages...</p>
+        </div>
+      </div>
+    }>
+      <ChatWithParams />
+    </Suspense>
   )
 }
 
