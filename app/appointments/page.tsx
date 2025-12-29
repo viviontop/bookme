@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label"
 import { Calendar, Clock, MapPin, Star, Check, X, MessageCircle, CreditCard, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PaymentDialog } from "@/components/payment-dialog"
+import { AppointmentDebug } from "./test-debug"
 
 export default function AppointmentsPage() {
   const { user, isLoading: authLoading } = useAuth()
@@ -244,6 +245,13 @@ export default function AppointmentsPage() {
               {user.role === "buyer" ? "Manage your bookings" : "Manage your client appointments"}
             </p>
           </div>
+        </div>
+
+        {/* Debug Info - Remove in production */}
+        {process.env.NODE_ENV === "development" && <AppointmentDebug />}
+
+        <div className="mb-6 flex items-center justify-between">
+          <div>
           {user.role === "buyer" && (
             <Link href="/search">
               <Button>
