@@ -13,7 +13,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Clock, DollarSign, Check, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { PaymentDialog } from "@/components/payment-dialog"
 
 const timeSlots = [
   "09:00",
@@ -50,24 +49,11 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [isBooked, setIsBooked] = useState(false)
-  const [showPayment, setShowPayment] = useState(false)
-  const [createdAppointment, setCreatedAppointment] = useState<Appointment | null>(null)
 
   const handleBook = () => {
     if (!user || !selectedDate || !selectedTime) return
 
     // Create appointment with pending status
-    const newAppointment: Appointment = {
-      id: crypto.randomUUID(),
-      buyerId: user.id,
-      sellerId: seller.id,
-      serviceId: service.id,
-      date: selectedDate.toISOString().split("T")[0],
-      time: selectedTime,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    }
-
     createAppointment({
       buyerId: user.id,
       sellerId: seller.id,
@@ -77,27 +63,19 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
       status: "pending",
     })
 
-    setCreatedAppointment(newAppointment)
     setIsBooked(true)
-    // Immediately show payment dialog
+    // Redirect to appointments page after a short delay
     setTimeout(() => {
-      setShowPayment(true)
-    }, 500)
+      handleClose()
+      router.push("/appointments")
+    }, 1500)
   }
 
   const handleClose = () => {
     setSelectedDate(undefined)
     setSelectedTime(null)
     setIsBooked(false)
-    setShowPayment(false)
-    setCreatedAppointment(null)
     onOpenChange(false)
-  }
-
-  const handlePaymentComplete = () => {
-    handleClose()
-    // Navigate to appointments page to see the appointment
-    router.push("/appointments")
   }
 
   // Get booked slots for the selected date
@@ -110,40 +88,7 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
         .map((a) => a.time)
     : []
 
-  // Show payment dialog after booking
-  if (isBooked && showPayment && createdAppointment) {
-    return (
-      <>
-        <Dialog open={open} onOpenChange={handleClose}>
-          <DialogContent className="sm:max-w-md">
-            <div className="flex flex-col items-center py-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                <CreditCard className="h-8 w-8 text-primary" />
-              </div>
-              <h2 className="mt-4 text-xl font-semibold text-foreground">Complete Payment</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Please complete payment to confirm your appointment.
-              </p>
-            </div>
-          </DialogContent>
-        </Dialog>
-        <PaymentDialog
-          open={showPayment}
-          onOpenChange={(open) => {
-            if (!open) {
-              handlePaymentComplete()
-            }
-            setShowPayment(open)
-          }}
-          appointment={createdAppointment}
-          service={service}
-          seller={seller}
-        />
-      </>
-    )
-  }
-
-  if (isBooked && !showPayment) {
+  if (isBooked) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-md">
@@ -153,8 +98,19 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
             </div>
             <h2 className="mt-4 text-xl font-semibold text-foreground">Booking Created!</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Preparing payment...
+              Redirecting to appointments page to complete payment...
             </p>
+            <div className="mt-6 rounded-lg bg-muted p-4 text-left w-full">
+              <p className="text-sm font-medium text-foreground">{service.title}</p>
+              <p className="text-sm text-muted-foreground">
+                {selectedDate?.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                })}{" "}
+                at {selectedTime}
+              </p>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

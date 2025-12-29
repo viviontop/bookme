@@ -22,11 +22,13 @@ import {
 import { Home, Search, Calendar, Settings, LogOut, User, Menu, X, Shield, MessageCircle, MapPin } from "lucide-react"
 import { useState } from "react"
 import { useMessaging } from "@/lib/messaging-context"
+import { useData } from "@/lib/data-context"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export function Navigation() {
   const { user, logout } = useAuth()
+  const { appointments } = useData()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
@@ -38,6 +40,11 @@ export function Navigation() {
   } catch {
     // Messaging context not available
   }
+
+  // Count appointments that need payment (for buyers)
+  const pendingPaymentCount = user?.role === "buyer" 
+    ? appointments.filter((a) => a.buyerId === user.id && (a.status === "pending" || a.status === "approved")).length
+    : 0
 
   if (!user) return null
 
@@ -82,6 +89,9 @@ export function Navigation() {
                           <Badge variant="default" className="ml-auto h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                             {unreadCount > 9 ? "9+" : unreadCount}
                           </Badge>
+                        )}
+                        {item.href === "/appointments" && pendingPaymentCount > 0 && (
+                          <div className="ml-auto h-2 w-2 rounded-full bg-blue-500" title={`${pendingPaymentCount} appointment(s) need payment`} />
                         )}
                       </Button>
                     </Link>
@@ -149,16 +159,19 @@ export function Navigation() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden items-center gap-1 md:flex">
-            {navItems.map((item) => (
-              <Link key={item.href} href={item.href}>
-                <Button variant={pathname === item.href ? "secondary" : "ghost"} size="sm" className="gap-2">
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Button>
-              </Link>
-            ))}
-          </div>
+              <div className="hidden items-center gap-1 md:flex">
+                {navItems.map((item) => (
+                  <Link key={item.href} href={item.href}>
+                    <Button variant={pathname === item.href ? "secondary" : "ghost"} size="sm" className="gap-2 relative">
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                      {item.href === "/appointments" && pendingPaymentCount > 0 && (
+                        <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-blue-500 border-2 border-card" title={`${pendingPaymentCount} appointment(s) need payment`} />
+                      )}
+                    </Button>
+                  </Link>
+                ))}
+              </div>
 
           <div className="flex items-center gap-2">
             {/* Theme Toggle */}

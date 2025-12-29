@@ -49,9 +49,8 @@ export default function AppointmentsPage() {
 
   const myAppointments = useMemo(() => {
     if (!user) return []
-    return appointments
-      .filter((a) => (user.role === "buyer" ? a.buyerId === user.id : a.sellerId === user.id))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    const filtered = appointments.filter((a) => (user.role === "buyer" ? a.buyerId === user.id : a.sellerId === user.id))
+    return filtered.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
   }, [appointments, user])
 
   const pendingAppointments = myAppointments.filter((a) => a.status === "pending")
@@ -171,7 +170,7 @@ export default function AppointmentsPage() {
                 {appointment.status}
               </Badge>
 
-              {(appointment.status === "approved" || appointment.status === "pending") && user.role === "buyer" && (
+              {(appointment.status === "approved" || appointment.status === "pending") && user.role === "buyer" && service && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -180,7 +179,7 @@ export default function AppointmentsPage() {
                   }}
                 >
                   <CreditCard className="mr-2 h-4 w-4" />
-                  Pay Now
+                  PAY ${service.price.toFixed(2)}
                 </Button>
               )}
 
