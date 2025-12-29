@@ -58,7 +58,7 @@ pnpm dev
 ## Demo Accounts
 
 ### Admin Account
-- Email: `becheruandrei9@gmail.com`
+- Email: `nuh uh`
 - Password: `admin123`
 
 ### Seller Account
