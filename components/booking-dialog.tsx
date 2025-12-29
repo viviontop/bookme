@@ -1,17 +1,19 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useData } from "@/lib/data-context"
-import type { Service, User } from "@/lib/types"
+import type { Service, User, Appointment } from "@/lib/types"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Clock, DollarSign, Check } from "lucide-react"
+import { Clock, DollarSign, Check, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { PaymentDialog } from "@/components/payment-dialog"
 
 const timeSlots = [
   "09:00",
@@ -43,32 +45,59 @@ interface BookingDialogProps {
 export function BookingDialog({ open, onOpenChange, service, seller }: BookingDialogProps) {
   const { user } = useAuth()
   const { createAppointment, appointments } = useData()
+  const router = useRouter()
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [isBooked, setIsBooked] = useState(false)
+  const [showPayment, setShowPayment] = useState(false)
+  const [createdAppointment, setCreatedAppointment] = useState<Appointment | null>(null)
 
   const handleBook = () => {
     if (!user || !selectedDate || !selectedTime) return
 
-    // Create appointment with pending status - seller needs to approve first
+    // Create appointment with pending status
+    const newAppointment: Appointment = {
+      id: crypto.randomUUID(),
+      buyerId: user.id,
+      sellerId: seller.id,
+      serviceId: service.id,
+      date: selectedDate.toISOString().split("T")[0],
+      time: selectedTime,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    }
+
     createAppointment({
       buyerId: user.id,
       sellerId: seller.id,
       serviceId: service.id,
       date: selectedDate.toISOString().split("T")[0],
       time: selectedTime,
-      status: "pending", // Waiting for seller approval
+      status: "pending",
     })
 
+    setCreatedAppointment(newAppointment)
     setIsBooked(true)
+    // Immediately show payment dialog
+    setTimeout(() => {
+      setShowPayment(true)
+    }, 500)
   }
 
   const handleClose = () => {
     setSelectedDate(undefined)
     setSelectedTime(null)
     setIsBooked(false)
+    setShowPayment(false)
+    setCreatedAppointment(null)
     onOpenChange(false)
+  }
+
+  const handlePaymentComplete = () => {
+    handleClose()
+    // Navigate to appointments page to see the appointment
+    router.push("/appointments")
   }
 
   // Get booked slots for the selected date
@@ -81,7 +110,40 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
         .map((a) => a.time)
     : []
 
-  if (isBooked) {
+  // Show payment dialog after booking
+  if (isBooked && showPayment && createdAppointment) {
+    return (
+      <>
+        <Dialog open={open} onOpenChange={handleClose}>
+          <DialogContent className="sm:max-w-md">
+            <div className="flex flex-col items-center py-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <CreditCard className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="mt-4 text-xl font-semibold text-foreground">Complete Payment</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Please complete payment to confirm your appointment.
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+        <PaymentDialog
+          open={showPayment}
+          onOpenChange={(open) => {
+            if (!open) {
+              handlePaymentComplete()
+            }
+            setShowPayment(open)
+          }}
+          appointment={createdAppointment}
+          service={service}
+          seller={seller}
+        />
+      </>
+    )
+  }
+
+  if (isBooked && !showPayment) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-md">
@@ -89,24 +151,10 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
               <Check className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="mt-4 text-xl font-semibold text-foreground">Booking Request Sent!</h2>
+            <h2 className="mt-4 text-xl font-semibold text-foreground">Booking Created!</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Your appointment request has been sent to the seller. You&apos;ll be notified once they approve it, and then you can proceed with payment.
+              Preparing payment...
             </p>
-            <div className="mt-6 rounded-lg bg-muted p-4 text-left">
-              <p className="text-sm font-medium text-foreground">{service.title}</p>
-              <p className="text-sm text-muted-foreground">
-                {selectedDate?.toLocaleDateString("en-US", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                })}{" "}
-                at {selectedTime}
-              </p>
-            </div>
-            <Button className="mt-6 w-full" onClick={handleClose}>
-              Done
-            </Button>
           </div>
         </DialogContent>
       </Dialog>

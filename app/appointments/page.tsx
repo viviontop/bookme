@@ -171,7 +171,7 @@ export default function AppointmentsPage() {
                 {appointment.status}
               </Badge>
 
-              {appointment.status === "approved" && user.role === "buyer" && (
+              {(appointment.status === "approved" || appointment.status === "pending") && user.role === "buyer" && (
                 <Button
                   size="sm"
                   onClick={() => {
