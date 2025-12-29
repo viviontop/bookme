@@ -196,7 +196,7 @@ export default function AppointmentsPage() {
                 {appointment.status}
               </Badge>
 
-              {(appointment.status === "approved" || appointment.status === "pending") && user.role === "buyer" && service && (
+              {(appointment.status === "approved" || appointment.status === "pending") && (user.role === "buyer" || user.role === "admin") && appointment.buyerId === user.id && service && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -326,11 +326,20 @@ export default function AppointmentsPage() {
 
           <TabsContent value="pending" className="mt-6 space-y-4">
             {pendingAppointments.length > 0 ? (
-              pendingAppointments.map((apt) => <AppointmentCard key={apt.id} appointment={apt} showActions />)
+              pendingAppointments.map((apt) => <AppointmentCard key={apt.id} appointment={apt} showActions={user.role === "seller" || (user.role === "admin" && apt.sellerId === user.id)} />)
             ) : (
               <div className="py-12 text-center">
                 <Clock className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                <p className="mt-4 text-muted-foreground">No pending requests</p>
+                <p className="mt-4 text-muted-foreground">
+                  {user.role === "buyer" || user.role === "admin" ? "No pending appointments" : "No pending requests"}
+                </p>
+                {(user.role === "buyer" || user.role === "admin") && (
+                  <Link href="/search">
+                    <Button className="mt-4" variant="outline">
+                      Book an Appointment
+                    </Button>
+                  </Link>
+                )}
               </div>
             )}
           </TabsContent>
