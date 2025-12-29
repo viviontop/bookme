@@ -608,6 +608,34 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Clear Appointments Dialog */}
+      <AlertDialog open={showClearAppointmentsDialog} onOpenChange={setShowClearAppointmentsDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear All Appointments</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete all appointments? This action cannot be undone.
+              <br />
+              <span className="font-semibold text-foreground mt-2 block">
+                This will delete {appointments.length} appointment{appointments.length !== 1 ? "s" : ""}.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                clearAppointments()
+                setShowClearAppointmentsDialog(false)
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Clear All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
