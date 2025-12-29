@@ -4,6 +4,8 @@ import { ChatContent } from "./chat-content"
 
 // Force dynamic rendering to prevent prerendering issues with useSearchParams
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const dynamicParams = true
 
 export default function ChatPage() {
   return (
