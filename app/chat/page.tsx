@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useRef, useMemo, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+
+// Force dynamic rendering to prevent prerendering issues with useSearchParams
+export const dynamic = 'force-dynamic'
 import { useAuth } from "@/lib/auth-context"
 import { useData } from "@/lib/data-context"
 import { useMessaging } from "@/lib/messaging-context"
