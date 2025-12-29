@@ -50,12 +50,14 @@ export interface Appointment {
   serviceId: string
   date: string
   time: string
-  status: "pending" | "confirmed" | "completed" | "cancelled"
+  status: "pending" | "approved" | "rejected" | "paid" | "confirmed" | "completed" | "cancelled"
   createdAt: string
   amount?: number // Total amount paid
   sellerEarnings?: number // 97.5% of amount
   platformFee?: number // 2.5% of amount
   paidAt?: string // When payment was completed
+  approvedAt?: string // When seller approved
+  rejectedAt?: string // When seller rejected
 }
 
 export interface Review {

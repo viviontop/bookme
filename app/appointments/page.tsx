@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Calendar, Clock, MapPin, Star, Check, X, MessageCircle } from "lucide-react"
+import { Calendar, Clock, MapPin, Star, Check, X, MessageCircle, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { PaymentDialog } from "@/components/payment-dialog"
 
 export default function AppointmentsPage() {
   const { user, isLoading: authLoading } = useAuth()
@@ -30,7 +31,9 @@ export default function AppointmentsPage() {
   const router = useRouter()
 
   const [showReviewDialog, setShowReviewDialog] = useState(false)
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<string | null>(null)
+  const [paymentAppointment, setPaymentAppointment] = useState<string | null>(null)
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState("")
 
@@ -52,8 +55,9 @@ export default function AppointmentsPage() {
   }, [appointments, user])
 
   const pendingAppointments = myAppointments.filter((a) => a.status === "pending")
-  const confirmedAppointments = myAppointments.filter((a) => a.status === "confirmed")
-  const pastAppointments = myAppointments.filter((a) => a.status === "completed" || a.status === "cancelled")
+  const approvedAppointments = myAppointments.filter((a) => a.status === "approved")
+  const confirmedAppointments = myAppointments.filter((a) => a.status === "confirmed" || a.status === "paid")
+  const pastAppointments = myAppointments.filter((a) => a.status === "completed" || a.status === "cancelled" || a.status === "rejected")
 
   const handleAccept = (id: string) => {
     updateAppointment(id, { status: "confirmed" })
@@ -113,6 +117,9 @@ export default function AppointmentsPage() {
 
     const statusColors = {
       pending: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+      approved: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+      rejected: "bg-destructive/10 text-destructive border-destructive/20",
+      paid: "bg-primary/10 text-primary border-primary/20",
       confirmed: "bg-primary/10 text-primary border-primary/20",
       completed: "bg-green-500/10 text-green-600 border-green-500/20",
       cancelled: "bg-destructive/10 text-destructive border-destructive/20",
@@ -163,6 +170,19 @@ export default function AppointmentsPage() {
               <Badge variant="outline" className={cn("capitalize", statusColors[appointment.status])}>
                 {appointment.status}
               </Badge>
+
+              {appointment.status === "approved" && user.role === "buyer" && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setPaymentAppointment(appointment.id)
+                    setShowPaymentDialog(true)
+                  }}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Pay Now
+                </Button>
+              )}
 
               {showActions && appointment.status === "pending" && user.role === "seller" && (
                 <>
@@ -232,6 +252,14 @@ export default function AppointmentsPage() {
                 </Badge>
               )}
             </TabsTrigger>
+            {user.role === "buyer" && approvedAppointments.length > 0 && (
+              <TabsTrigger value="approved">
+                Payment Required
+                <Badge variant="secondary" className="ml-2 h-5 min-w-5 rounded-full px-1.5">
+                  {approvedAppointments.length}
+                </Badge>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="past">Past</TabsTrigger>
           </TabsList>
 
@@ -261,6 +289,19 @@ export default function AppointmentsPage() {
               </div>
             )}
           </TabsContent>
+
+          {user.role === "buyer" && (
+            <TabsContent value="approved" className="mt-6 space-y-4">
+              {approvedAppointments.length > 0 ? (
+                approvedAppointments.map((apt) => <AppointmentCard key={apt.id} appointment={apt} showActions />)
+              ) : (
+                <div className="py-12 text-center">
+                  <CreditCard className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                  <p className="mt-4 text-muted-foreground">No payments required</p>
+                </div>
+              )}
+            </TabsContent>
+          )}
 
           <TabsContent value="past" className="mt-6 space-y-4">
             {pastAppointments.length > 0 ? (
@@ -324,6 +365,25 @@ export default function AppointmentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Payment Dialog */}
+      {paymentAppointment && (() => {
+        const appointment = appointments.find((a) => a.id === paymentAppointment)
+        if (!appointment) return null
+        const service = services.find((s) => s.id === appointment.serviceId)
+        const seller = users.find((u) => u.id === appointment.sellerId)
+        if (!service || !seller) return null
+
+        return (
+          <PaymentDialog
+            open={showPaymentDialog}
+            onOpenChange={setShowPaymentDialog}
+            appointment={appointment}
+            service={service}
+            seller={seller}
+          />
+        )
+      })()}
     </div>
   )
 }

@@ -51,22 +51,14 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
   const handleBook = () => {
     if (!user || !selectedDate || !selectedTime) return
 
-    // Calculate payment amounts (97.5% to seller, 2.5% platform fee)
-    const amount = service.price
-    const platformFee = amount * 0.025
-    const sellerEarnings = amount * 0.975
-
+    // Create appointment with pending status - seller needs to approve first
     createAppointment({
       buyerId: user.id,
       sellerId: seller.id,
       serviceId: service.id,
       date: selectedDate.toISOString().split("T")[0],
       time: selectedTime,
-      status: "confirmed", // Auto-confirm and process payment
-      amount,
-      sellerEarnings,
-      platformFee,
-      paidAt: new Date().toISOString(),
+      status: "pending", // Waiting for seller approval
     })
 
     setIsBooked(true)
@@ -97,9 +89,9 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
               <Check className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="mt-4 text-xl font-semibold text-foreground">Booking Confirmed!</h2>
+            <h2 className="mt-4 text-xl font-semibold text-foreground">Booking Request Sent!</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Your appointment has been confirmed and payment has been processed. You&apos;re all set!
+              Your appointment request has been sent to the seller. You&apos;ll be notified once they approve it, and then you can proceed with payment.
             </p>
             <div className="mt-6 rounded-lg bg-muted p-4 text-left">
               <p className="text-sm font-medium text-foreground">{service.title}</p>

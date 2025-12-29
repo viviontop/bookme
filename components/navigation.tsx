@@ -87,6 +87,17 @@ export function Navigation() {
                     </Link>
                   ))}
                   <div className="my-2 border-t border-border" />
+                  {user.role === "seller" && (
+                    <Link href="/appointments/seller">
+                      <Button
+                        variant={pathname === "/appointments/seller" ? "secondary" : "ghost"}
+                        className="w-full justify-start gap-2"
+                      >
+                        <Calendar className="h-4 w-4" />
+                        Manage Requests
+                      </Button>
+                    </Link>
+                  )}
                   {user.role === "admin" && (
                     <Link href="/admin">
                       <Button
