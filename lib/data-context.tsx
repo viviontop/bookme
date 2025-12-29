@@ -36,11 +36,52 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([])
 
   useEffect(() => {
-    setServices(JSON.parse(localStorage.getItem("services") || "[]"))
-    setAvailabilityState(JSON.parse(localStorage.getItem("availability") || "[]"))
-    setAppointments(JSON.parse(localStorage.getItem("appointments") || "[]"))
-    setReviews(JSON.parse(localStorage.getItem("reviews") || "[]"))
-    setUsers(JSON.parse(localStorage.getItem("users") || "[]"))
+    const loadData = () => {
+      try {
+        const storedServices = localStorage.getItem("services")
+        const storedAvailability = localStorage.getItem("availability")
+        const storedAppointments = localStorage.getItem("appointments")
+        const storedReviews = localStorage.getItem("reviews")
+        const storedUsers = localStorage.getItem("users")
+
+        if (storedServices) setServices(JSON.parse(storedServices))
+        if (storedAvailability) setAvailabilityState(JSON.parse(storedAvailability))
+        if (storedAppointments) {
+          const parsed = JSON.parse(storedAppointments)
+          setAppointments(parsed)
+        } else {
+          setAppointments([])
+        }
+        if (storedReviews) setReviews(JSON.parse(storedReviews))
+        if (storedUsers) setUsers(JSON.parse(storedUsers))
+      } catch (error) {
+        console.error("Error loading data from localStorage:", error)
+      }
+    }
+
+    loadData()
+
+    // Refresh data periodically to catch updates
+    const interval = setInterval(() => {
+      loadData()
+    }, 2000) // Refresh every 2 seconds
+
+    // Also listen for storage changes (in case data is updated in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "appointments" && e.newValue) {
+        try {
+          setAppointments(JSON.parse(e.newValue))
+        } catch (error) {
+          console.error("Error parsing appointments from storage event:", error)
+        }
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("storage", handleStorageChange)
+    }
   }, [])
 
   const addService = (service: Omit<Service, "id">) => {
@@ -73,6 +114,8 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
     const updated = [...appointments, newAppt]
     setAppointments(updated)
     localStorage.setItem("appointments", JSON.stringify(updated))
+    // Force a re-render by updating state
+    return newAppt
   }
 
   const updateAppointment = (id: string, data: Partial<Appointment>) => {

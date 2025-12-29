@@ -104,6 +104,16 @@ export default function AppointmentsPage() {
     )
   }
 
+  // Debug: Log appointments for troubleshooting
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    console.log("All appointments:", appointments)
+    console.log("My appointments:", myAppointments)
+    console.log("User:", user)
+    console.log("Pending:", pendingAppointments)
+    console.log("Approved:", approvedAppointments)
+    console.log("Confirmed:", confirmedAppointments)
+  }
+
   const AppointmentCard = ({
     appointment,
     showActions = false,
