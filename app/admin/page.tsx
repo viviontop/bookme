@@ -48,6 +48,7 @@ export default function AdminPage() {
   const router = useRouter()
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
   const [kycAction, setKycAction] = useState<"approve" | "reject" | null>(null)
+  const [showClearAppointmentsDialog, setShowClearAppointmentsDialog] = useState(false)
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== "admin")) {
