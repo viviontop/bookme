@@ -50,8 +50,22 @@ export default function AppointmentsPage() {
 
   const myAppointments = useMemo(() => {
     if (!user) return []
-    const filtered = appointments.filter((a) => (user.role === "buyer" ? a.buyerId === user.id : a.sellerId === user.id))
-    return filtered.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
+    const filtered = appointments.filter((a) => {
+      if (user.role === "admin") {
+        // Admins see all appointments where they are buyer or seller
+        return a.buyerId === user.id || a.sellerId === user.id
+      } else if (user.role === "buyer") {
+        return a.buyerId === user.id
+      } else if (user.role === "seller") {
+        return a.sellerId === user.id
+      }
+      return false
+    })
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.date).getTime()
+      const dateB = new Date(b.createdAt || b.date).getTime()
+      return dateB - dateA
+    })
   }, [appointments, user])
 
   const pendingAppointments = myAppointments.filter((a) => a.status === "pending")
@@ -283,7 +297,7 @@ export default function AppointmentsPage() {
                 </Badge>
               )}
             </TabsTrigger>
-            {user.role === "buyer" && approvedAppointments.length > 0 && (
+            {(user.role === "buyer" || user.role === "admin") && approvedAppointments.length > 0 && (
               <TabsTrigger value="approved">
                 Payment Required
                 <Badge variant="secondary" className="ml-2 h-5 min-w-5 rounded-full px-1.5">
@@ -321,10 +335,10 @@ export default function AppointmentsPage() {
             )}
           </TabsContent>
 
-          {user.role === "buyer" && (
+          {(user.role === "buyer" || user.role === "admin") && (
             <TabsContent value="approved" className="mt-6 space-y-4">
               {approvedAppointments.length > 0 ? (
-                approvedAppointments.map((apt) => <AppointmentCard key={apt.id} appointment={apt} showActions />)
+                approvedAppointments.map((apt) => <AppointmentCard key={apt.id} appointment={apt} showActions={false} />)
               ) : (
                 <div className="py-12 text-center">
                   <CreditCard className="mx-auto h-12 w-12 text-muted-foreground/50" />
