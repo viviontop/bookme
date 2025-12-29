@@ -7,7 +7,11 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const dynamicParams = true
 
-export default function ChatPage() {
+export default function ChatPage({
+  searchParams,
+}: {
+  searchParams: { userId?: string }
+}) {
   return (
     <Suspense fallback={
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
@@ -17,7 +21,7 @@ export default function ChatPage() {
         </div>
       </div>
     }>
-      <ChatContent />
+      <ChatContent initialUserId={searchParams?.userId} />
     </Suspense>
   )
 }
