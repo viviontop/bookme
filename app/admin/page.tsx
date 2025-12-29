@@ -43,6 +43,7 @@ export default function AdminPage() {
     getUserStats,
     approveKYC,
     rejectKYC,
+    clearAppointments,
   } = useData()
   const router = useRouter()
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
@@ -141,9 +142,17 @@ export default function AdminPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-          <p className="mt-2 text-muted-foreground">Manage users, services, and platform content</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
+            <p className="mt-2 text-muted-foreground">Manage users, services, and platform content</p>
+          </div>
+          <Button
+            variant="destructive"
+            onClick={() => setShowClearAppointmentsDialog(true)}
+          >
+            Clear All Appointments
+          </Button>
         </div>
 
         {/* Stats Grid */}

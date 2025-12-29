@@ -24,6 +24,7 @@ interface DataContextType {
   getSellerEarnings: (sellerId: string) => { total: number; monthly: Record<string, number> }
   getTotalSales: () => { total: number; platformFee: number; sellersEarnings: number }
   getUserStats: (userId: string) => { earnings: number; appointments: number; monthlyEarnings: Record<string, number> }
+  clearAppointments: () => void
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -122,6 +123,11 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
     const updated = appointments.map((a) => (a.id === id ? { ...a, ...data } : a))
     setAppointments(updated)
     localStorage.setItem("appointments", JSON.stringify(updated))
+  }
+
+  const clearAppointments = () => {
+    setAppointments([])
+    localStorage.setItem("appointments", "[]")
   }
 
   const addReview = (review: Omit<Review, "id" | "createdAt">) => {
@@ -228,6 +234,7 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
       getSellerEarnings,
       getTotalSales,
       getUserStats,
+      clearAppointments,
     }),
     [services, availability, appointments, reviews, users]
   )
