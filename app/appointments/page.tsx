@@ -245,13 +245,6 @@ export default function AppointmentsPage() {
               {user.role === "buyer" ? "Manage your bookings" : "Manage your client appointments"}
             </p>
           </div>
-        </div>
-
-        {/* Debug Info - Remove in production */}
-        {process.env.NODE_ENV === "development" && <AppointmentDebug />}
-
-        <div className="mb-6 flex items-center justify-between">
-          <div>
           {user.role === "buyer" && (
             <Link href="/search">
               <Button>
@@ -268,6 +261,9 @@ export default function AppointmentsPage() {
             </Link>
           )}
         </div>
+
+        {/* Debug Info - Remove in production */}
+        {process.env.NODE_ENV === "development" && <AppointmentDebug />}
 
         <Tabs defaultValue="upcoming">
           <TabsList>
