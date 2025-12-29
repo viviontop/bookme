@@ -250,9 +250,12 @@ export function Navigation() {
             <div className="flex flex-col gap-2">
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant={pathname === item.href ? "secondary" : "ghost"} className="w-full justify-start gap-2">
+                  <Button variant={pathname === item.href ? "secondary" : "ghost"} className="w-full justify-start gap-2 relative">
                     <item.icon className="h-4 w-4" />
                     {item.label}
+                    {item.href === "/appointments" && pendingPaymentCount > 0 && (
+                      <div className="ml-auto h-2 w-2 rounded-full bg-blue-500" title={`${pendingPaymentCount} appointment(s) need payment`} />
+                    )}
                   </Button>
                 </Link>
               ))}
