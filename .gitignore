@@ -50,3 +50,11 @@ Thumbs.db
 # Temporary files
 *.zip
 *.log
+
+# Visual Studio files
+.vs/
+*.slnx
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
