@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef, useMemo } from "react"
+import { useEffect, useState, useRef, useMemo, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useData } from "@/lib/data-context"
@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageCircle, Send, Search } from "lucide-react"
 import Link from "next/link"
 
-export default function ChatPage() {
+function ChatContent() {
   const { user } = useAuth()
   const { users } = useData()
   const { conversations, messages, getMessages, sendMessage, markAsRead, getUnreadCount } = useMessaging()
@@ -278,6 +278,21 @@ export default function ChatPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        <div className="text-center">
+          <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground animate-pulse" />
+          <p className="mt-4 text-muted-foreground">Loading messages...</p>
+        </div>
+      </div>
+    }>
+      <ChatContent />
+    </Suspense>
   )
 }
 
