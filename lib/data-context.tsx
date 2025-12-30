@@ -75,13 +75,31 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
         } catch (error) {
           console.error("Error parsing appointments from storage event:", error)
         }
+      } else if (e.key === "services" && e.newValue) {
+        try {
+          setServices(JSON.parse(e.newValue))
+        } catch (error) {
+          console.error("Error parsing services from storage event:", error)
+        }
+      } else if (e.key === "users" && e.newValue) {
+        try {
+          setUsers(JSON.parse(e.newValue))
+        } catch (error) {
+          console.error("Error parsing users from storage event:", error)
+        }
+      } else if (e.key === "reviews" && e.newValue) {
+        try {
+          setReviews(JSON.parse(e.newValue))
+        } catch (error) {
+          console.error("Error parsing reviews from storage event:", error)
+        }
       }
     }
 
-    window.addEventListener("storage", handleStorageChange)
+    globalThis.window?.addEventListener("storage", handleStorageChange)
     return () => {
       clearInterval(interval)
-      window.removeEventListener("storage", handleStorageChange)
+      globalThis.window?.removeEventListener("storage", handleStorageChange)
     }
   }, [])
 

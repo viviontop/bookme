@@ -287,8 +287,26 @@ export function seedDemoData() {
     }
   }
   
+  // Merge existing services with demo services (avoid duplicates)
+  const existingServices: Service[] = JSON.parse(localStorage.getItem("services") || "[]")
+  const allServices = [...existingServices]
+  for (const demoService of demoServices) {
+    if (!allServices.some((s) => s.id === demoService.id)) {
+      allServices.push(demoService)
+    }
+  }
+  
+  // Merge existing reviews with demo reviews (avoid duplicates)
+  const existingReviews: Review[] = JSON.parse(localStorage.getItem("reviews") || "[]")
+  const allReviews = [...existingReviews]
+  for (const demoReview of demoReviews) {
+    if (!allReviews.some((r) => r.id === demoReview.id)) {
+      allReviews.push(demoReview)
+    }
+  }
+  
   localStorage.setItem("users", JSON.stringify(allUsers))
-  localStorage.setItem("services", JSON.stringify(demoServices))
-  localStorage.setItem("reviews", JSON.stringify(demoReviews))
+  localStorage.setItem("services", JSON.stringify(allServices))
+  localStorage.setItem("reviews", JSON.stringify(allReviews))
   localStorage.setItem("seeded", "true")
 }
