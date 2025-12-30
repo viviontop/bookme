@@ -62,3 +62,4 @@ Thumbs.db
 *.user
 *.userosscache
 *.sln.docstates
+/lib/generated/prisma

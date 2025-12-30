@@ -31,8 +31,6 @@ A modern, full-featured appointment booking platform built with Next.js, React, 
 - Node.js 18+ 
 - npm or pnpm
 
-### Installation
-
 1. Clone the repository:
 ```bash
 git clone https://github.com/viviontop/bookme.git
@@ -57,18 +55,29 @@ pnpm dev
 
 ## Demo Accounts
 
+## Environment variables
+
+Create a `.env` file at the project root (we already use one for Prisma). Add the following values from your Supabase project and Prisma setup:
+
+- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL (from Supabase settings)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon/public key
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service role (server-only)
+- `DATABASE_URL` — Pooled DB connection string for runtime (pgbouncer)
+- `DIRECT_URL` — Direct DB connection string for migrations
+
+When deploying (Vercel or similar), add the same env vars in the host's UI and keep the service role key secret.
+
+## Deploy notes (Vercel + Supabase)
+
+- Set the env vars in your Vercel project settings.
+- Build command: `npm run build` (Next.js 16 app router)
+- Ensure `DATABASE_URL` points to the pooled URL (pgbouncer) for best production behavior; use `DIRECT_URL` for running migrations locally or in CI if needed.
 ### Admin Account
 - Email: `nuh uh`
-- Password: `admin123`
-
 ### Seller Account
 - Email: `seller@example.com`
-- Password: `password123`
-
 ### Buyer Account
 - Email: `buyer@example.com`
-- Password: `password123`
-
 ## Project Structure
 
 ```
