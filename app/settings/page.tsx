@@ -6,7 +6,9 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
+import { useData } from "@/lib/data-context"
 import { seedDemoData } from "@/lib/seed-data"
+import type { User } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,12 +18,32 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
-import { User, Shield, Bell, Lock, LogOut, ChevronRight, Check, AlertCircle, Clock, DollarSign } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { User as UserIcon, Shield, Bell, Lock, LogOut, ChevronRight, Check, AlertCircle, Clock, DollarSign } from "lucide-react"
 import { SellerEarnings } from "@/components/seller-earnings"
+import { ImageCropper } from "@/components/image-cropper"
 import { cn } from "@/lib/utils"
 
 export default function SettingsPage() {
   const { user, isLoading: authLoading, updateUser, logout } = useAuth()
+  const { appointments, services, reviews, updateUser: updateUserData } = useData()
   const router = useRouter()
 
   const [activeTab, setActiveTab] = useState("profile")
@@ -35,6 +57,20 @@ export default function SettingsPage() {
     bio: "",
     location: "",
   })
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [showCropDialog, setShowCropDialog] = useState(false)
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null)
+  const [cropType, setCropType] = useState<"avatar" | "banner">("avatar")
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [phoneVerification, setPhoneVerification] = useState("")
+  const [verificationCode, setVerificationCode] = useState("")
+  const [showVerificationStep, setShowVerificationStep] = useState(false)
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [show2FADialog, setShow2FADialog] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
 
   useEffect(() => {
     seedDemoData()
@@ -52,13 +88,68 @@ export default function SettingsPage() {
         bio: user.bio || "",
         location: user.location || "",
       })
+      // Initialize avatar preview with user's current avatar
+      setAvatarPreview(user.avatar || null)
     }
   }, [authLoading, user, router])
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        setSavedMessage("Please select an image file")
+        setTimeout(() => setSavedMessage(""), 3000)
+        return
+      }
+      // Validate file size (5MB for cropping, will be compressed after)
+      if (file.size > 5 * 1024 * 1024) {
+        setSavedMessage("Image size must be less than 5MB")
+        setTimeout(() => setSavedMessage(""), 3000)
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImageToCrop(reader.result as string)
+        setCropType("avatar")
+        setShowCropDialog(true)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleCropComplete = (croppedImage: string) => {
+    if (cropType === "avatar") {
+      setAvatarPreview(croppedImage)
+    }
+    setImageToCrop(null)
+  }
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
-    updateUser(profileData)
+    
+    const updateData: Partial<User> = { ...profileData }
+    
+    // If avatar was changed, use the preview (which is the cropped image)
+    // Otherwise, preserve the existing avatar
+    if (avatarPreview && avatarPreview !== user?.avatar) {
+      updateData.avatar = avatarPreview
+    } else if (user?.avatar) {
+      // Preserve existing avatar if not changed
+      updateData.avatar = user.avatar
+    }
+    
+    // Preserve existing banner if not changed
+    if (user?.banner) {
+      updateData.banner = user.banner
+    }
+    
+    updateUser(updateData)
+    // Also update in data context to keep it in sync
+    if (user) {
+      updateUserData(user.id, updateData)
+    }
     setTimeout(() => {
       setIsSaving(false)
       setSavedMessage("Profile updated successfully")
@@ -67,6 +158,116 @@ export default function SettingsPage() {
   }
 
   const handleLogout = () => {
+    logout()
+    router.push("/")
+  }
+
+  const handleChangePassword = () => {
+    setShowPasswordDialog(true)
+    setCurrentPassword("")
+    setNewPassword("")
+    setConfirmPassword("")
+  }
+
+  const handleSavePassword = () => {
+    if (!user) return
+
+    // Validate current password
+    if (currentPassword !== user.password) {
+      setSavedMessage("Current password is incorrect")
+      setTimeout(() => setSavedMessage(""), 3000)
+      return
+    }
+
+    // Validate new password
+    if (newPassword.length < 6) {
+      setSavedMessage("New password must be at least 6 characters")
+      setTimeout(() => setSavedMessage(""), 3000)
+      return
+    }
+
+    // Validate passwords match
+    if (newPassword !== confirmPassword) {
+      setSavedMessage("New passwords do not match")
+      setTimeout(() => setSavedMessage(""), 3000)
+      return
+    }
+
+    // Update password
+    updateUser({ password: newPassword })
+    updateUserData(user.id, { password: newPassword })
+    setShowPasswordDialog(false)
+    setSavedMessage("Password changed successfully")
+    setTimeout(() => setSavedMessage(""), 3000)
+  }
+
+  const handleToggle2FA = () => {
+    if (twoFactorEnabled) {
+      // Disable 2FA
+      setTwoFactorEnabled(false)
+      setSavedMessage("Two-Factor Authentication disabled")
+      setTimeout(() => setSavedMessage(""), 3000)
+    } else {
+      // Show 2FA setup dialog
+      setShow2FADialog(true)
+    }
+  }
+
+  const handleEnable2FA = () => {
+    // In a real app, this would generate a QR code and secret
+    // For demo purposes, we'll just enable it
+    setTwoFactorEnabled(true)
+    setShow2FADialog(false)
+    setSavedMessage("Two-Factor Authentication enabled")
+    setTimeout(() => setSavedMessage(""), 3000)
+  }
+
+  const handleDeleteAccount = () => {
+    setShowDeleteDialog(true)
+    setPhoneVerification("")
+    setVerificationCode("")
+    setShowVerificationStep(false)
+  }
+
+  const handleDeleteVerification = () => {
+    if (!user) return
+    
+    // Verify phone number matches
+    if (phoneVerification !== user.phone) {
+      setSavedMessage("Phone number does not match")
+      setTimeout(() => setSavedMessage(""), 3000)
+      return
+    }
+    
+    // Generate a simple verification code (in production, this would be sent via SMS)
+    const expectedCode = user.phone.slice(-4) // Last 4 digits as verification code
+    
+    if (verificationCode !== expectedCode) {
+      setSavedMessage("Invalid verification code")
+      setTimeout(() => setSavedMessage(""), 3000)
+      return
+    }
+    
+    // Delete account
+    const users: User[] = JSON.parse(localStorage.getItem("users") || "[]")
+    const updatedUsers = users.filter((u) => u.id !== user.id)
+    localStorage.setItem("users", JSON.stringify(updatedUsers))
+    
+    // Clear appointments, services, reviews related to this user
+    const updatedAppointments = appointments.filter(
+      (a) => a.buyerId !== user.id && a.sellerId !== user.id
+    )
+    localStorage.setItem("appointments", JSON.stringify(updatedAppointments))
+    
+    const updatedServices = services.filter((s) => s.sellerId !== user.id)
+    localStorage.setItem("services", JSON.stringify(updatedServices))
+    
+    const updatedReviews = reviews.filter(
+      (r) => r.reviewerId !== user.id && r.revieweeId !== user.id
+    )
+    localStorage.setItem("reviews", JSON.stringify(updatedReviews))
+    
+    // Logout and redirect
     logout()
     router.push("/")
   }
@@ -80,7 +281,7 @@ export default function SettingsPage() {
   }
 
   const menuItems = [
-    { id: "profile", label: "Profile", icon: User },
+    { id: "profile", label: "Profile", icon: UserIcon },
     ...(user.role === "seller" ? [{ id: "earnings", label: "Earnings", icon: DollarSign }] : []),
     { id: "kyc", label: "Identity Verification", icon: Shield },
     { id: "notifications", label: "Notifications", icon: Bell },
@@ -175,17 +376,30 @@ export default function SettingsPage() {
                     {/* Avatar */}
                     <div className="flex items-center gap-4">
                       <Avatar className="h-20 w-20">
-                        <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.firstName} />
+                        <AvatarImage src={avatarPreview || user.avatar || "/placeholder.svg"} alt={user.firstName} />
                         <AvatarFallback className="bg-primary text-2xl text-primary-foreground">
                           {user.firstName[0]}
                           {user.lastName[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <Button type="button" variant="outline" size="sm" className="bg-transparent">
+                        <input
+                          type="file"
+                          id="avatar-upload"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="bg-transparent"
+                          onClick={() => document.getElementById("avatar-upload")?.click()}
+                        >
                           Change Photo
                         </Button>
-                        <p className="mt-1 text-xs text-muted-foreground">JPG, PNG or GIF. Max 2MB</p>
+                        <p className="mt-1 text-xs text-muted-foreground">JPG, PNG or GIF. Max 5MB</p>
                       </div>
                     </div>
 
@@ -367,7 +581,7 @@ export default function SettingsPage() {
                         <p className="font-medium text-foreground">Password</p>
                         <p className="text-sm text-muted-foreground">Last changed: Never</p>
                       </div>
-                      <Button variant="outline" size="sm" className="bg-transparent">
+                      <Button variant="outline" size="sm" className="bg-transparent" onClick={handleChangePassword}>
                         Change
                       </Button>
                     </div>
@@ -377,10 +591,12 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-foreground">Two-Factor Authentication</p>
-                        <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
+                        <p className="text-sm text-muted-foreground">
+                          {twoFactorEnabled ? "Enabled" : "Add an extra layer of security"}
+                        </p>
                       </div>
-                      <Button variant="outline" size="sm" className="bg-transparent">
-                        Enable
+                      <Button variant="outline" size="sm" className="bg-transparent" onClick={handleToggle2FA}>
+                        {twoFactorEnabled ? "Disable" : "Enable"}
                       </Button>
                     </div>
                   </div>
@@ -392,7 +608,7 @@ export default function SettingsPage() {
                     <p className="mt-1 text-sm text-muted-foreground">
                       Permanently delete your account and all associated data
                     </p>
-                    <Button variant="destructive" size="sm" className="mt-4">
+                    <Button variant="destructive" size="sm" className="mt-4" onClick={handleDeleteAccount}>
                       Delete Account
                     </Button>
                   </div>
@@ -402,6 +618,196 @@ export default function SettingsPage() {
           </main>
         </div>
       </div>
+
+      {/* Image Cropper Dialog */}
+      {imageToCrop && (
+        <ImageCropper
+          open={showCropDialog}
+          onOpenChange={setShowCropDialog}
+          imageSrc={imageToCrop}
+          onCropComplete={handleCropComplete}
+          aspectRatio={cropType === "avatar" ? 1 : 16 / 9}
+          cropShape={cropType === "avatar" ? "round" : "rect"}
+        />
+      )}
+
+      {/* Change Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>Enter your current password and choose a new one</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="current-password">Current Password</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password (min 6 characters)"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePassword}>Change Password</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Two-Factor Authentication Dialog */}
+      <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+            <DialogDescription>
+              Add an extra layer of security to your account
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Alert>
+              <Shield className="h-4 w-4" />
+              <AlertDescription>
+                Two-Factor Authentication (2FA) adds an extra layer of security to your account. 
+                You'll need to enter a code from your authenticator app when signing in.
+              </AlertDescription>
+            </Alert>
+            <div className="rounded-lg border border-border p-4 space-y-2">
+              <p className="text-sm font-medium">How it works:</p>
+              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                <li>Download an authenticator app (Google Authenticator, Authy, etc.)</li>
+                <li>Scan the QR code that will be shown</li>
+                <li>Enter the 6-digit code to verify</li>
+                <li>You'll be asked for a code each time you sign in</li>
+              </ul>
+            </div>
+            <div className="flex items-center justify-center p-8 bg-muted rounded-lg">
+              <div className="text-center">
+                <Shield className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  QR code will be generated after enabling
+                </p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShow2FADialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEnable2FA}>Enable 2FA</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your account and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {!showVerificationStep ? (
+            <>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone-verification">Enter your phone number to verify</Label>
+                  <Input
+                    id="phone-verification"
+                    type="tel"
+                    placeholder="Enter phone number"
+                    value={phoneVerification}
+                    onChange={(e) => setPhoneVerification(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    We'll send a verification code to confirm your identity
+                  </p>
+                </div>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (!user) return
+                    if (phoneVerification !== user.phone) {
+                      setSavedMessage("Phone number does not match")
+                      setTimeout(() => setSavedMessage(""), 3000)
+                      return
+                    }
+                    setShowVerificationStep(true)
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Continue
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4 py-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Enter the verification code sent to your phone. For demo purposes, use the last 4 digits of your phone number.
+                  </AlertDescription>
+                </Alert>
+                <div className="space-y-2">
+                  <Label htmlFor="verification-code">Verification Code</Label>
+                  <Input
+                    id="verification-code"
+                    type="text"
+                    placeholder="Enter 4-digit code"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    maxLength={4}
+                  />
+                </div>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => {
+                  setShowVerificationStep(false)
+                  setPhoneVerification("")
+                  setVerificationCode("")
+                }}>
+                  Back
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteVerification}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete Account
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

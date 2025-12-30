@@ -41,8 +41,22 @@ export default function FeedPage() {
       filtered = filtered.filter((s) => s.category === selectedCategory)
     }
 
-    // Shuffle based on shuffleKey
-    return [...filtered].sort(() => Math.random() - 0.5)
+    // Deterministic shuffle based on shuffleKey
+    const shuffled = [...filtered]
+    // Use a seeded random function for deterministic shuffling
+    let seed = shuffleKey
+    const seededRandom = () => {
+      seed = (seed * 9301 + 49297) % 233280
+      return seed / 233280
+    }
+    
+    // Fisher-Yates shuffle with seeded random
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(seededRandom() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    
+    return shuffled
   }, [services, selectedCategory, shuffleKey])
 
   if (authLoading || !user) {

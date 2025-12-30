@@ -281,11 +281,31 @@ export default function AdminPage() {
         {/* Main Content */}
         <Tabs defaultValue="users" className="space-y-4">
           <div className="flex justify-center">
-            <TabsList className="w-fit">
-              <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
-              <TabsTrigger value="services">Services ({services.length})</TabsTrigger>
-              <TabsTrigger value="appointments">Appointments ({appointments.length})</TabsTrigger>
-              <TabsTrigger value="kyc">KYC Verification ({pendingKYC.length})</TabsTrigger>
+            <TabsList className="flex-wrap w-fit">
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <span>Users</span>
+                <Badge variant="secondary" className="h-5 min-w-5 rounded-full px-1.5 text-xs">
+                  {users.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="services" className="flex items-center gap-2">
+                <span>Services</span>
+                <Badge variant="secondary" className="h-5 min-w-5 rounded-full px-1.5 text-xs">
+                  {services.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="appointments" className="flex items-center gap-2">
+                <span>Appointments</span>
+                <Badge variant="secondary" className="h-5 min-w-5 rounded-full px-1.5 text-xs">
+                  {appointments.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="kyc" className="flex items-center gap-2">
+                <span>KYC Verification</span>
+                <Badge variant="secondary" className="h-5 min-w-5 rounded-full px-1.5 text-xs">
+                  {pendingKYC.length}
+                </Badge>
+              </TabsTrigger>
             </TabsList>
           </div>
 

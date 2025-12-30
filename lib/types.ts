@@ -10,6 +10,8 @@ export interface User {
   birthDate: string
   phone: string
   avatar?: string
+  banner?: string
+  bannerAspectRatio?: number
   bio?: string
   location?: string
   createdAt: string

@@ -276,27 +276,27 @@ export default function AppointmentsPage() {
         </div>
 
         <Tabs defaultValue="upcoming">
-          <TabsList>
-            <TabsTrigger value="upcoming">
-              Upcoming
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="upcoming" className="flex items-center gap-2">
+              <span>Upcoming</span>
               {confirmedAppointments.length > 0 && (
-                <Badge variant="secondary" className="ml-2 h-5 min-w-5 rounded-full px-1.5">
+                <Badge variant="secondary" className="h-5 min-w-5 rounded-full px-1.5 text-xs">
                   {confirmedAppointments.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="pending">
-              Pending
+            <TabsTrigger value="pending" className="flex items-center gap-2">
+              <span>Pending</span>
               {pendingAppointments.length > 0 && (
-                <Badge variant="secondary" className="ml-2 h-5 min-w-5 rounded-full px-1.5">
+                <Badge variant="secondary" className="h-5 min-w-5 rounded-full px-1.5 text-xs">
                   {pendingAppointments.length}
                 </Badge>
               )}
             </TabsTrigger>
             {(user.role === "buyer" || user.role === "admin") && approvedAppointments.length > 0 && (
-              <TabsTrigger value="approved">
-                Payment Required
-                <Badge variant="secondary" className="ml-2 h-5 min-w-5 rounded-full px-1.5">
+              <TabsTrigger value="approved" className="flex items-center gap-2">
+                <span>Payment Required</span>
+                <Badge variant="secondary" className="h-5 min-w-5 rounded-full px-1.5 text-xs">
                   {approvedAppointments.length}
                 </Badge>
               </TabsTrigger>

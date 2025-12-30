@@ -19,7 +19,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { Home, Search, Calendar, Settings, LogOut, User, Menu, X, Shield, MessageCircle, MapPin } from "lucide-react"
+import { Home, Search, Calendar, Settings, LogOut, User, Menu, X, Shield, MessageCircle, MapPin, Plus } from "lucide-react"
 import { useState } from "react"
 import { useMessaging } from "@/lib/messaging-context"
 import { useData } from "@/lib/data-context"
@@ -98,26 +98,48 @@ export function Navigation() {
                   ))}
                   <div className="my-2 border-t border-border" />
                   {user.role === "seller" && (
-                    <Link href="/appointments/seller">
-                      <Button
-                        variant={pathname === "/appointments/seller" ? "secondary" : "ghost"}
-                        className="w-full justify-start gap-2"
-                      >
-                        <Calendar className="h-4 w-4" />
-                        Manage Requests
-                      </Button>
-                    </Link>
+                    <>
+                      <Link href="/appointments/seller">
+                        <Button
+                          variant={pathname === "/appointments/seller" ? "secondary" : "ghost"}
+                          className="w-full justify-start gap-2"
+                        >
+                          <Calendar className="h-4 w-4" />
+                          Manage Requests
+                        </Button>
+                      </Link>
+                      <Link href={`/profile/${user.id}?addService=true`}>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Service
+                        </Button>
+                      </Link>
+                    </>
                   )}
                   {user.role === "admin" && (
-                    <Link href="/admin">
-                      <Button
-                        variant={pathname === "/admin" ? "secondary" : "ghost"}
-                        className="w-full justify-start gap-2"
-                      >
-                        <Shield className="h-4 w-4" />
-                        Admin
-                      </Button>
-                    </Link>
+                    <>
+                      <Link href="/admin">
+                        <Button
+                          variant={pathname === "/admin" ? "secondary" : "ghost"}
+                          className="w-full justify-start gap-2"
+                        >
+                          <Shield className="h-4 w-4" />
+                          Admin
+                        </Button>
+                      </Link>
+                      <Link href={`/profile/${user.id}?addService=true`}>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Service
+                        </Button>
+                      </Link>
+                    </>
                   )}
                   <Link href="/settings">
                     <Button
@@ -171,6 +193,14 @@ export function Navigation() {
                     </Button>
                   </Link>
                 ))}
+                {(user.role === "seller" || user.role === "admin") && (
+                  <Link href={`/profile/${user.id}?addService=true`}>
+                    <Button variant="default" size="sm" className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Service
+                    </Button>
+                  </Link>
+                )}
               </div>
 
           <div className="flex items-center gap-2">
