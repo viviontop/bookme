@@ -1,7 +1,7 @@
 -- One-off SQL you can run in Supabase SQL editor to backfill and create trigger
 -- Backfill existing auth.users into app "User" table
 INSERT INTO "User" (id, email, name, "createdAt")
-SELECT id, email, (user_metadata->>'full_name')::text, created_at
+SELECT id, email, (raw_user_meta_data->>'full_name')::text, created_at
 FROM auth.users
 ON CONFLICT (id) DO NOTHING;
 
@@ -12,7 +12,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   INSERT INTO "User" (id, email, name, "createdAt")
-  VALUES (NEW.id, NEW.email, NEW.user_metadata->>'full_name', NEW.created_at)
+  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name', NEW.created_at)
   ON CONFLICT (id) DO UPDATE
     SET email = EXCLUDED.email,
         name = COALESCE(EXCLUDED.name, "User".name);

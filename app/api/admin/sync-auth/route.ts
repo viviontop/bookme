@@ -10,11 +10,15 @@ export async function POST(req: Request) {
     const { default: prisma } = await import('../../../../lib/prisma');
 
     // Read auth.users directly from Postgres (requires service-role permissions on DATABASE_URL)
-    const rows: Array<any> = await prisma.$queryRawUnsafe(`SELECT id, email, user_metadata, created_at FROM auth.users`);
+    const rows: Array<any> = await prisma.$queryRawUnsafe(`SELECT id, email, raw_user_meta_data, created_at FROM auth.users`);
 
     let upserted = 0;
     for (const r of rows) {
-      const name = r.user_metadata ? (r.user_metadata.full_name ?? r.user_metadata.fullName ?? null) : null;
+      let meta = r.raw_user_meta_data;
+      if (typeof meta === 'string' && meta.length) {
+        try { meta = JSON.parse(meta); } catch (e) { meta = null; }
+      }
+      const name = meta ? (meta.full_name ?? meta.fullName ?? null) : null;
       await prisma.user.upsert({
         where: { id: r.id },
         update: { email: r.email, name },
