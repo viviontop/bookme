@@ -7,11 +7,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Use pg directly to read auth.users and upsert into app User via Prisma (separately)
+    const { Pool } = await import('pg');
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const res = await pool.query('SELECT id, email, raw_user_meta_data, created_at FROM auth.users');
+    const rows: any[] = res.rows || [];
+
+    // Upsert each user using Prisma client (import lazily)
     const { default: prisma } = await import('../../../../lib/prisma');
-
-    // Read auth.users directly from Postgres (requires service-role permissions on DATABASE_URL)
-    const rows: Array<any> = await prisma.$queryRawUnsafe(`SELECT id, email, raw_user_meta_data, created_at FROM auth.users`);
-
     let upserted = 0;
     for (const r of rows) {
       let meta = r.raw_user_meta_data;
@@ -27,6 +30,7 @@ export async function POST(req: Request) {
       upserted++;
     }
 
+    await pool.end();
     return new Response(JSON.stringify({ ok: true, upserted }), { status: 200 });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
