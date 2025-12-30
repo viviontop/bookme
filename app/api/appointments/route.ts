@@ -1,10 +1,8 @@
-import prisma from '../../../lib/prisma';
-import supabaseAdmin from '../../../lib/supabaseAdmin';
-
 async function getUserFromHeader(headers: Headers) {
   const auth = headers.get('authorization') ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
+  const { default: supabaseAdmin } = await import('../../../lib/supabaseAdmin');
   const { data, error } = await supabaseAdmin.auth.getUser(token);
   if (error) return null;
   return data?.user ?? null;
@@ -12,6 +10,7 @@ async function getUserFromHeader(headers: Headers) {
 
 export async function GET() {
   try {
+    const { default: prisma } = await import('../../../lib/prisma');
     const appointments = await prisma.appointment.findMany({
       include: { service: true, buyer: true },
       orderBy: { datetime: 'asc' },
@@ -42,6 +41,7 @@ export async function POST(request: Request) {
       return new Response(JSON.stringify({ error: 'buyerId must match authenticated user' }), { status: 403 });
     }
 
+    const { default: prisma } = await import('../../../lib/prisma');
     const appointment = await prisma.appointment.create({
       data: {
         serviceId,
