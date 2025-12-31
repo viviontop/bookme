@@ -50,38 +50,36 @@ export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) 
               height = (height * maxWidth) / width
               width = maxWidth
             }
-          } else if (height > maxHeight) {
-            width = (width * maxHeight) / height
-            height = maxHeight
+          } else {
+            if (height > maxHeight) {
+              width = (width * maxHeight) / height
+              height = maxHeight
+            }
           }
 
           canvas.width = width
           canvas.height = height
-
           const ctx = canvas.getContext("2d")
           if (!ctx) {
             reject(new Error("Could not get canvas context"))
             return
           }
-
           ctx.drawImage(img, 0, 0, width, height)
 
           canvas.toBlob(
             (blob) => {
               if (!blob) {
-                reject(new Error("Failed to compress image"))
+                reject(new Error("Canvas is empty"))
                 return
               }
-              const fileReader = new FileReader()
-              fileReader.onloadend = () => resolve(fileReader.result as string)
-              fileReader.onerror = reject
-              fileReader.readAsDataURL(blob)
+              const reader2 = new FileReader()
+              reader2.onloadend = () => resolve(reader2.result as string)
+              reader2.readAsDataURL(blob)
             },
             "image/jpeg",
             quality
           )
         }
-        img.onerror = reject
         img.src = e.target?.result as string
       }
       reader.onerror = reject
@@ -93,66 +91,61 @@ export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) 
     const files = e.target.files
     if (!files) return
 
-    // Limit to 5 images to prevent quota issues
-    const filesToProcess = Array.from(files).slice(0, 5 - serviceImages.length)
-
-    if (filesToProcess.length < Array.from(files).length) {
-      alert("Maximum 5 images allowed. Only the first 5 will be uploaded.")
+    const file = files[0]
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file")
+      return
     }
 
-    for (const file of filesToProcess) {
-      if (!file.type.startsWith("image/")) {
-        alert("Please select image files only")
-        continue
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Image size must be less than 5MB")
-        continue
-      }
-
-      try {
-        const compressedImage = await compressImage(file, 800, 600, 0.7)
-        setServiceImages((prev) => [...prev, compressedImage])
-      } catch (error) {
-        console.error("Error compressing image:", error)
-        alert("Failed to process image. Please try again.")
-      }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Please select an image smaller than 5MB")
+      return
     }
+
+    try {
+      const compressed = await compressImage(file)
+      if (serviceImages.length < 5) {
+        setServiceImages([...serviceImages, compressed])
+      }
+    } catch (error) {
+      console.error("Error compressing image:", error)
+      alert("Failed to process image")
+    }
+
+    // Reset input
+    e.target.value = ""
   }
 
   const handleRemoveImage = (index: number) => {
-    setServiceImages((prev) => prev.filter((_, i) => i !== index))
+    setServiceImages(serviceImages.filter((_, i) => i !== index))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
 
-    const images = serviceImages.length > 0
-      ? serviceImages
-      : ["/placeholder.svg?height=300&width=400&query=" + encodeURIComponent(formData.title)]
+    if (serviceImages.length === 0) {
+      alert("Please add at least one service image")
+      return
+    }
 
-    try {
-      const result = await addService({
-        sellerId: user.id,
-        title: formData.title,
-        description: formData.description,
-        price: Number.parseFloat(formData.price),
-        duration: Number.parseInt(formData.duration),
-        category: formData.category,
-        images,
-        isActive: true,
-      })
+    const result = await addService({
+      sellerId: user.id,
+      title: formData.title,
+      description: formData.description,
+      price: Number.parseFloat(formData.price),
+      duration: Number.parseInt(formData.duration),
+      category: formData.category,
+      images: serviceImages,
+      isActive: true,
+    })
 
-      if (result.success) {
-        setFormData({ title: "", description: "", price: "", duration: "", category: "" })
-        setServiceImages([])
-        onOpenChange(false)
-      } else {
-        alert(result.error || "Failed to create service")
-      }
-    } catch (error) {
-      alert("An unexpected error occurred")
+    if (result.success) {
+      setFormData({ title: "", description: "", price: "", duration: "", category: "" })
+      setServiceImages([])
+      onOpenChange(false)
+    } else {
+      alert(result.error || "Failed to create service")
     }
   }
 
@@ -252,54 +245,38 @@ export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) 
                 type="number"
                 value={formData.duration}
                 onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                variant="outline"
-                size="sm"
-                onClick={() => document.getElementById("images")?.click()}
-                className="w-full"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Upload Photos
-              </Button>
-              {serviceImages.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  {serviceImages.map((img, index) => (
-                    <div key={`service-img-${img.substring(0, 20)}-${index}`} className="relative aspect-video rounded-lg overflow-hidden border border-border">
-                      <Image
-                        src={img}
-                        alt={`Service image ${index + 1}`}
-                        fill
-                        className="object-cover"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-1 right-1 h-6 w-6"
-                        onClick={() => handleRemoveImage(index)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
+                placeholder="60"
+                required
+                min="15"
+                step="15"
+                className="h-11 text-base"
+              />
+            </div>
+
+            {/* Category */}
+            <div className="space-y-2">
+              <Label htmlFor="category" className="text-base font-semibold">Category *</Label>
+              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <SelectTrigger className="h-11 text-base">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat} className="text-base">
+                      {cat}
+                    </SelectItem>
                   ))}
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Upload up to 5 photos. Images will be automatically compressed. JPG, PNG or GIF. Max 5MB each.
-              </p>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1 bg-transparent"
-              onClick={() => onOpenChange(false)}
-            >
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} size="lg">
               Cancel
             </Button>
-            <Button type="submit" className="flex-1">
-              Add Service
+            <Button type="submit" size="lg" className="min-w-32">
+              Create Service
             </Button>
           </div>
         </form>
