@@ -57,7 +57,7 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true)
-    const success = await register({
+    const result = await register({
       email: formData.email,
       password: formData.password,
       role,
@@ -67,10 +67,10 @@ export default function RegisterPage() {
       phone: formData.phone,
     })
 
-    if (success) {
+    if (result.success) {
       router.push("/feed")
     } else {
-      setError("An account with this email already exists")
+      setError(result.error || "Registration failed")
     }
     setIsLoading(false)
   }

@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<boolean>
-  register: (data: RegisterData) => Promise<boolean>
+  register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   updateUser: (data: Partial<User>) => void
 }
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true
   }
 
-  const register = async (data: RegisterData): Promise<boolean> => {
+  const register = async (data: RegisterData): Promise<{ success: boolean; error?: string }> => {
     const { email, password, role, firstName, lastName, birthDate, phone } = data
     const { error, data: res } = await supabase.auth.signUp({
       email,
@@ -71,9 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { role, firstName, lastName, birthDate, phone },
       },
     })
-    if (error) return false
+    if (error) return { success: false, error: error.message || String(error) }
     if (res.user) setUser(fromSupabaseUser(res.user))
-    return true
+    return { success: true }
   }
 
   const logout = async () => {
