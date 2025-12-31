@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type { User, UserRole } from "./types"
+import supabase from "./supabaseClient"
 
 interface AuthContextType {
   user: User | null
@@ -29,62 +30,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const stored = localStorage.getItem("currentUser")
-    if (stored) {
-      setUser(JSON.parse(stored))
+    let mounted = true
+    // Initialize from Supabase session
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return
+      const session = data.session
+      if (session?.user) {
+        setUser(fromSupabaseUser(session.user))
+      } else {
+        setUser(null)
+      }
+      setIsLoading(false)
+    })
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+      if (session?.user) setUser(fromSupabaseUser(session.user))
+      else setUser(null)
+    })
+
+    return () => {
+      mounted = false
+      sub.subscription.unsubscribe()
     }
-    setIsLoading(false)
   }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const users: User[] = JSON.parse(localStorage.getItem("users") || "[]")
-    const found = users.find((u) => u.email === email && u.password === password)
-    if (found) {
-      setUser(found)
-      localStorage.setItem("currentUser", JSON.stringify(found))
-      return true
-    }
-    return false
-  }
-
-  const register = async (data: RegisterData): Promise<boolean> => {
-    const users: User[] = JSON.parse(localStorage.getItem("users") || "[]")
-    if (users.some((u) => u.email === data.email)) {
-      return false
-    }
-
-    const newUser: User = {
-      id: crypto.randomUUID(),
-      ...data,
-      createdAt: new Date().toISOString(),
-      isVerified: false,
-      kycStatus: "pending",
-    }
-
-    users.push(newUser)
-    localStorage.setItem("users", JSON.stringify(users))
-    setUser(newUser)
-    localStorage.setItem("currentUser", JSON.stringify(newUser))
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return false
+    if (data.user) setUser(fromSupabaseUser(data.user))
     return true
   }
 
-  const logout = () => {
+  const register = async (data: RegisterData): Promise<boolean> => {
+    const { email, password, role, firstName, lastName, birthDate, phone } = data
+    const { error, data: res } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { role, firstName, lastName, birthDate, phone },
+      },
+    })
+    if (error) return false
+    if (res.user) setUser(fromSupabaseUser(res.user))
+    return true
+  }
+
+  const logout = async () => {
+    await supabase.auth.signOut()
     setUser(null)
-    localStorage.removeItem("currentUser")
   }
 
   const updateUser = (data: Partial<User>) => {
     if (!user) return
     const updated = { ...user, ...data }
     setUser(updated)
-    localStorage.setItem("currentUser", JSON.stringify(updated))
-
-    const users: User[] = JSON.parse(localStorage.getItem("users") || "[]")
-    const idx = users.findIndex((u) => u.id === user.id)
-    if (idx >= 0) {
-      users[idx] = updated
-      localStorage.setItem("users", JSON.stringify(users))
-    }
+    // If you maintain a profile table, you would also persist changes via an API route here
   }
 
   return (
@@ -92,6 +93,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
+}
+
+function fromSupabaseUser(u: any): User {
+  return {
+    id: u.id,
+    email: u.email ?? "",
+    password: "", // never store password client-side
+    role: (u.user_metadata?.role as UserRole) || "buyer",
+    firstName: u.user_metadata?.firstName ?? "",
+    lastName: u.user_metadata?.lastName ?? "",
+    birthDate: u.user_metadata?.birthDate ?? "",
+    phone: u.user_metadata?.phone ?? "",
+    avatar: u.user_metadata?.avatar ?? undefined,
+    banner: undefined,
+    bannerAspectRatio: undefined,
+    bio: u.user_metadata?.bio ?? undefined,
+    location: u.user_metadata?.location ?? undefined,
+    createdAt: u.created_at ?? new Date().toISOString(),
+    isVerified: !!u.email_confirmed_at,
+    kycStatus: "pending",
+    kycDocuments: undefined,
+  }
 }
 
 export function useAuth() {
