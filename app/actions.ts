@@ -76,8 +76,6 @@ export async function createService(data: any) {
                 images: images,
                 isActive: data.isActive ?? true,
                 sellerId: data.sellerId,
-                rating: 0,
-                reviewCount: 0
             }
         })
         revalidatePath("/")
