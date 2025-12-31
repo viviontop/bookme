@@ -53,12 +53,6 @@ export default function ProfilePage({ params }: { readonly params: Promise<{ id:
     checkIfUsername()
   }, [resolvedParams.id, users, router])
 
-  useEffect(() => {
-    if (!authLoading && !currentUser) {
-      router.push("/login")
-    }
-  }, [authLoading, currentUser, router])
-
   const profileUser = useMemo(() => {
     // If viewing own profile, use currentUser to get latest data
     if (currentUser?.id === resolvedParams.id) {
