@@ -200,23 +200,22 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
         </Card>
       </DialogTrigger>
 
-      {/* Service Detail Modal - Premium Design */}
-      <DialogContent className="max-w-7xl h-[90vh] p-0 overflow-hidden gap-0 bg-background border-none shadow-2xl">
+      {/* Service Detail Modal - Clean & Wide */}
+      <DialogContent className="max-w-[95vw] md:max-w-[85vw] h-[92vh] p-0 overflow-hidden gap-0 bg-background">
         <DialogTitle className="sr-only">{service.title}</DialogTitle>
 
-        <div className="grid md:grid-cols-[1.6fr_1fr] h-full">
+        <div className="grid md:grid-cols-2 h-full gap-0">
           {/* Left: Image Carousel */}
-          <div className="relative bg-gradient-to-br from-black via-gray-900 to-black overflow-hidden group/modal-carousel">
+          <div className="relative bg-black overflow-hidden">
             <div className="h-full w-full" ref={modalEmblaRef}>
-              <div className="flex h-full w-full touch-pan-y">
+              <div className="flex h-full w-full">
                 {images.map((img, index) => (
-                  <div className="flex-[0_0_100%] min-w-0 relative h-full flex items-center justify-center" key={index}>
+                  <div className="flex-[0_0_100%] min-w-0 relative h-full flex items-center justify-center bg-black" key={index}>
                     <Image
                       src={img}
-                      alt={`${service.title} - Image ${index + 1}`}
+                      alt={`${service.title} - ${index + 1}`}
                       fill
                       className="object-contain"
-                      sizes="(max-width: 768px) 100vw, 60vw"
                       priority={index === 0}
                     />
                   </div>
@@ -224,13 +223,13 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
               </div>
             </div>
 
-            {/* Carousel Navigation */}
+            {/* Navigation */}
             {images.length > 1 && (
               <>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 hover:text-white border border-white/20 opacity-0 group-hover/modal-carousel:opacity-100 transition-all shadow-2xl"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30"
                   onClick={(e) => handlePrev(e, modalEmblaApi)}
                 >
                   <ChevronLeft className="h-6 w-6" />
@@ -238,18 +237,18 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 hover:text-white border border-white/20 opacity-0 group-hover/modal-carousel:opacity-100 transition-all shadow-2xl"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30"
                   onClick={(e) => handleNext(e, modalEmblaApi)}
                 >
                   <ChevronRight className="h-6 w-6" />
                 </Button>
 
                 {/* Dots */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
                   {images.map((_, i) => (
                     <button
                       key={i}
-                      className="h-2 w-2 rounded-full bg-white/40 hover:bg-white/60 transition-all backdrop-blur-sm"
+                      className="h-2 w-2 rounded-full bg-white/50 hover:bg-white/80 transition-colors"
                       onClick={(e) => {
                         e.stopPropagation()
                         modalEmblaApi?.scrollTo(i)
@@ -260,15 +259,14 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
               </>
             )}
 
-            {/* Action Buttons Overlay */}
-            <div className="absolute top-6 right-6 z-20 flex gap-2">
+            {/* Action Buttons */}
+            <div className="absolute top-4 right-4 flex gap-2">
               {(isOwner || isAdmin) && (
                 <Button
                   variant="destructive"
                   size="icon"
                   onClick={handleDelete}
-                  title="Delete Service"
-                  className="h-10 w-10 rounded-full shadow-xl bg-red-500 hover:bg-red-600 border-2 border-white/20"
+                  className="h-10 w-10 rounded-full shadow-lg"
                 >
                   <Trash className="h-5 w-5" />
                 </Button>
@@ -280,8 +278,7 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      title="Report Service"
-                      className="h-10 w-10 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 border-2 border-white/20 text-white shadow-xl"
+                      className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white"
                     >
                       <Flag className="h-5 w-5" />
                     </Button>
@@ -289,16 +286,17 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle>Report Service</DialogTitle>
-                      <DialogDescription>Please describe why you are reporting this service.</DialogDescription>
+                      <DialogDescription>Please describe why you're reporting this service.</DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                      <Label htmlFor="reason" className="mb-2 block">Reason</Label>
+                      <Label htmlFor="reason">Reason</Label>
                       <Textarea
                         id="reason"
                         placeholder="This service violates terms because..."
                         value={reportReason}
                         onChange={(e) => setReportReason(e.target.value)}
                         rows={4}
+                        className="mt-2"
                       />
                     </div>
                     <DialogFooter>
@@ -311,86 +309,64 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
             </div>
           </div>
 
-          {/* Right: Service Details */}
-          <div className="flex flex-col h-full overflow-hidden bg-background">
-            {/* Header Section */}
-            <div className="p-8 border-b border-border/50">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h2 className="text-4xl font-bold text-foreground mb-3 leading-tight">{service.title}</h2>
-                  <Badge variant="secondary" className="text-sm font-medium px-3 py-1">
-                    {service.category}
-                  </Badge>
+          {/* Right: Details */}
+          <div className="flex flex-col h-full bg-background">
+            {/* Header */}
+            <div className="p-8 border-b space-y-6">
+              <div className="flex items-start justify-between gap-6">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-3xl font-bold mb-2 break-words">{service.title}</h2>
+                  <Badge variant="secondary" className="mt-2">{service.category}</Badge>
                 </div>
-                <div className="text-right ml-4">
-                  <div className="text-5xl font-bold text-primary">${service.price}</div>
-                  <div className="text-sm text-muted-foreground mt-1">per session</div>
+                <div className="text-right shrink-0">
+                  <div className="text-4xl font-bold text-primary">${service.price}</div>
+                  <div className="text-sm text-muted-foreground">per session</div>
                 </div>
               </div>
 
               {/* Seller Info */}
-              <div className="mt-6 p-4 rounded-xl bg-muted/30 border border-border/50">
+              <div className="p-4 rounded-lg bg-muted/50 border">
                 <SellerInfo />
               </div>
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-8">
-              {/* Service Details */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-6 text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-primary" />
-                    <span className="font-medium">{service.duration} minutes</span>
-                  </div>
-                  {seller.location && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5 text-primary" />
-                      <span className="font-medium">{seller.location}</span>
-                    </div>
-                  )}
+            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  <span>{service.duration} minutes</span>
                 </div>
-
-                {service.description && (
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                      <div className="h-1 w-1 rounded-full bg-primary"></div>
-                      About This Service
-                    </h3>
-                    <p className="text-base leading-relaxed text-muted-foreground whitespace-pre-wrap">
-                      {service.description}
-                    </p>
+                {seller.location && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    <span>{seller.location}</span>
                   </div>
                 )}
-
-                {/* Additional Info Cards */}
-                <div className="grid grid-cols-2 gap-4 pt-4">
-                  <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-                    <div className="text-sm text-muted-foreground mb-1">Duration</div>
-                    <div className="text-2xl font-bold text-foreground">{service.duration}m</div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-                    <div className="text-sm text-muted-foreground mb-1">Category</div>
-                    <div className="text-2xl font-bold text-foreground truncate">{service.category}</div>
-                  </div>
-                </div>
               </div>
+
+              {service.description && (
+                <div>
+                  <h3 className="font-semibold mb-3">About This Service</h3>
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    {service.description}
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-6 border-t border-border/50 bg-muted/20">
+            {/* Footer */}
+            <div className="p-6 border-t bg-muted/20">
               <div className="flex gap-3">
                 <Button
                   variant="outline"
-                  className="flex-1 h-12 text-base font-semibold"
-                  asChild
+                  className="flex-1 h-12"
+                  onClick={() => router.push(`/profile/${seller.id}`)}
                 >
-                  <Link href={`/profile/${seller.username || seller.id}`}>
-                    View Profile
-                  </Link>
+                  View Profile
                 </Button>
                 <Button
-                  className="flex-1 h-12 text-base font-semibold shadow-lg bg-primary hover:bg-primary/90"
+                  className="flex-1 h-12"
                 >
                   Book Now
                 </Button>

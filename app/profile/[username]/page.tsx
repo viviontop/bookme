@@ -1,8 +1,12 @@
 import { notFound, redirect } from "next/navigation"
-import { getUserByUsername, getServices } from "@/app/actions"
+import { getUserByUsername } from "@/app/actions"
 
 // Simple server component that redirects username to ID-based route
-export default async function UsernameProfileRedirect({ params }: { params: { username: string } }) {
+export default async function UsernameProfileRedirect({
+    params
+}: {
+    params: Promise<{ username: string }>
+}) {
     const resolvedParams = await params
     let username = decodeURIComponent(resolvedParams.username)
 
@@ -16,6 +20,6 @@ export default async function UsernameProfileRedirect({ params }: { params: { us
         notFound()
     }
 
-    // Redirect to the ID-based profile page which has all the features
+    // Redirect to the ID-based profile page
     redirect(`/profile/${user.id}`)
 }
