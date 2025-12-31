@@ -1,10 +1,11 @@
 "use server"
 
-import { PrismaClient } from "@prisma/client"
+import prisma from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import type { User, Service } from "@/lib/types"
 
-const prisma = new PrismaClient()
+// Removed local instantiation
+
 
 export async function getServices() {
     try {
