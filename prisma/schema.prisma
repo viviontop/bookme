@@ -19,6 +19,14 @@ model User {
   username    String?       @unique
   name        String?
   createdAt   DateTime      @default(now())
+  role        String        @default("buyer")
+  avatar      String?
+  bio         String?
+  location    String?
+  banner      String?
+  bannerAspectRatio Float?
+  isVerified  Boolean       @default(false)
+  kycStatus   String        @default("pending")
   services    Service[]
   appointments Appointment[]
 }

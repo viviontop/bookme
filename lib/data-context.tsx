@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react"
 import type { Service, Availability, Appointment, Review, User } from "./types"
-import { getServices, getUsers, createService, registerUserDB } from "@/app/actions"
+import { getServices, getUsers, createService, registerUserDB, updateUser as updateUserDB } from "@/app/actions"
+
 
 interface DataContextType {
   services: Service[]
@@ -136,10 +137,11 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
     return { rating: Math.round(avg * 10) / 10, count: buyerReviews.length }
   }
 
-  const updateUser = (id: string, data: Partial<User>) => {
+  const updateUser = async (id: string, data: Partial<User>) => {
     const updated = users.map((u) => (u.id === id ? { ...u, ...data } : u))
     setUsers(updated)
-    // We might want to sync this to DB too if it's profile update
+    // Persist to database
+    await updateUserDB(id, data)
   }
 
   const approveKYC = (userId: string) => {

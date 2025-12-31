@@ -170,3 +170,76 @@ export async function getUserByUsername(username: string) {
         return null
     }
 }
+
+export async function deleteService(serviceId: string, userId: string) {
+    try {
+        // Verify ownership or admin status
+        const service = await prisma.service.findUnique({
+            where: { id: serviceId },
+            include: { seller: true }
+        })
+
+        if (!service) return { success: false, error: "Service not found" }
+
+        const user = await prisma.user.findUnique({ where: { id: userId } })
+
+        if (!user) return { success: false, error: "User not found" }
+
+        if (service.sellerId !== userId && user.role !== "admin") {
+            return { success: false, error: "Unauthorized" }
+        }
+
+        // Hard delete
+        await prisma.service.delete({ where: { id: serviceId } })
+
+        revalidatePath("/")
+        revalidatePath("/feed")
+
+        return { success: true }
+    } catch (error) {
+        console.error("Error deleting service:", error)
+        return { success: false, error: String(error) }
+    }
+}
+
+export async function makeUserAdmin(email: string) {
+    try {
+        const user = await prisma.user.update({
+            where: { email },
+            data: { role: "admin" }
+        })
+        return { success: true, user }
+    } catch (error) {
+        console.error("Error making user admin:", error)
+    }
+}
+
+export async function updateUser(userId: string, data: any) {
+    try {
+        const prismaData: any = {}
+
+        if (data.role) prismaData.role = data.role
+        if (data.username) prismaData.username = data.username
+        if (data.bio) prismaData.bio = data.bio
+        if (data.location) prismaData.location = data.location
+        if (data.avatar) prismaData.avatar = data.avatar
+        if (data.banner) prismaData.banner = data.banner
+        if (data.bannerAspectRatio) prismaData.bannerAspectRatio = data.bannerAspectRatio
+        if (typeof data.isVerified === 'boolean') prismaData.isVerified = data.isVerified
+        if (data.kycStatus) prismaData.kycStatus = data.kycStatus
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: prismaData
+        })
+
+        revalidatePath("/")
+        revalidatePath("/admin")
+        revalidatePath(`/profile/${userId}`)
+
+        return { success: true }
+    } catch (error) {
+        console.error("Error updating user:", error)
+        return { success: false, error: String(error) }
+    }
+}

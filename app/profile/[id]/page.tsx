@@ -8,6 +8,7 @@ import { useData } from "@/lib/data-context"
 import { seedDemoData } from "@/lib/seed-data"
 import type { Service, User } from "@/lib/types"
 import { Button } from "@/components/ui/button"
+import { ServiceCard } from "@/components/service-card"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -269,49 +270,9 @@ export default function ProfilePage({ params }: { readonly params: Promise<{ id:
                 )}
 
                 {userServices.length > 0 ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {userServices.map((service) => (
-                      <Card key={service.id} className="overflow-hidden">
-                        <div className="relative aspect-video">
-                          <Image
-                            src={service.images[0] || "/placeholder.svg?height=200&width=400&query=service"}
-                            alt={service.title}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="font-semibold text-foreground">{service.title}</h3>
-                              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{service.description}</p>
-                            </div>
-                            <Badge variant="secondary" className="ml-2 shrink-0">
-                              ${service.price}
-                            </Badge>
-                          </div>
-                          <div className="mt-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {service.duration} min
-                              </span>
-                              <Badge variant="outline">{service.category}</Badge>
-                            </div>
-                            {!isOwnProfile && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedService(service)
-                                  setShowBooking(true)
-                                }}
-                              >
-                                Book Now
-                              </Button>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <ServiceCard key={service.id} service={service} seller={profileUser} />
                     ))}
                   </div>
                 ) : (
@@ -328,33 +289,39 @@ export default function ProfilePage({ params }: { readonly params: Promise<{ id:
               <ReviewsList reviews={userReviews} users={users} />
             </TabsContent>
           </Tabs>
-        </div>
-      </div>
+        </div >
+      </div >
 
       {/* Booking Dialog */}
-      {selectedService && profileUser && (
-        <BookingDialog
-          open={showBooking}
-          onOpenChange={setShowBooking}
-          service={selectedService}
-          seller={profileUser}
-        />
-      )}
+      {
+        selectedService && profileUser && (
+          <BookingDialog
+            open={showBooking}
+            onOpenChange={setShowBooking}
+            service={selectedService}
+            seller={profileUser}
+          />
+        )
+      }
 
       {/* Add Service Dialog */}
-      {isOwnProfile && (currentUser.role === "seller" || currentUser.role === "admin") && (
-        <AddServiceDialog open={showAddService} onOpenChange={setShowAddService} />
-      )}
+      {
+        isOwnProfile && (currentUser.role === "seller" || currentUser.role === "admin") && (
+          <AddServiceDialog open={showAddService} onOpenChange={setShowAddService} />
+        )
+      }
 
       {/* Banner Cropper Dialog */}
-      {imageToCrop && (
-        <BannerCropper
-          open={showCropDialog}
-          onOpenChange={setShowCropDialog}
-          imageSrc={imageToCrop}
-          onCropComplete={handleBannerCropComplete}
-        />
-      )}
-    </div>
+      {
+        imageToCrop && (
+          <BannerCropper
+            open={showCropDialog}
+            onOpenChange={setShowCropDialog}
+            imageSrc={imageToCrop}
+            onCropComplete={handleBannerCropComplete}
+          />
+        )
+      }
+    </div >
   )
 }
