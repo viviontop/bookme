@@ -361,7 +361,7 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
                 <Button
                   variant="outline"
                   className="flex-1 h-12"
-                  onClick={() => router.push(`/profile/${seller.id}`)}
+                  onClick={() => window.location.href = `/profile/${seller.id}`}
                 >
                   View Profile
                 </Button>
