@@ -84,7 +84,7 @@ export default function FeedPage() {
         {recommendedServices.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {recommendedServices.map((service) => {
-              const seller = sellers.find((s) => s.id === service.sellerId)
+              const seller = service.seller || sellers.find((s) => s.id === service.sellerId)
               if (!seller) return null
               return <ServiceCard key={service.id} service={service} seller={seller} />
             })}

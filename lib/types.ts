@@ -35,6 +35,7 @@ export interface Service {
   category: string
   images: string[]
   isActive: boolean
+  seller?: User // Embedded seller data
 }
 
 export interface Availability {

@@ -50,11 +50,10 @@ export default function SearchPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter((s) => {
-        const seller = sellers.find((sel) => sel.id === s.sellerId)
+        const seller = s.seller || sellers.find((sel) => sel.id === s.sellerId)
         return (
           s.title.toLowerCase().includes(query) ||
           s.description.toLowerCase().includes(query) ||
-          s.category.toLowerCase().includes(query) ||
           s.category.toLowerCase().includes(query) ||
           seller?.firstName.toLowerCase().includes(query) ||
           seller?.lastName.toLowerCase().includes(query) ||
@@ -75,7 +74,7 @@ export default function SearchPage() {
     // Verified only
     if (verifiedOnly) {
       filtered = filtered.filter((s) => {
-        const seller = sellers.find((sel) => sel.id === s.sellerId)
+        const seller = s.seller || sellers.find((sel) => sel.id === s.sellerId)
         return seller?.isVerified
       })
     }
@@ -237,10 +236,51 @@ export default function SearchPage() {
         </div>
 
         {/* Results Grid */}
+
+        {/* Profile Results Section */}
+        {searchQuery && (
+          (() => {
+            const query = searchQuery.toLowerCase().replace("@", "")
+            const matchingProfiles = sellers.filter(u =>
+              u.username?.toLowerCase().includes(query) ||
+              u.firstName.toLowerCase().includes(query) ||
+              u.lastName.toLowerCase().includes(query)
+            )
+
+            if (matchingProfiles.length === 0) return null
+
+            return (
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold mb-4">Profiles</h2>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {matchingProfiles.map(profile => (
+                    <div key={profile.id} className="flex items-center gap-3 p-4 rounded-lg bg-card border hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push(profile.username ? `/${profile.username}` : `/profile/${profile.id}`)}>
+                      <div className="h-12 w-12 rounded-full overflow-hidden relative border">
+                        {/* Avatar Fallback/Image */}
+                        {profile.avatar ? (
+                          <img src={profile.avatar} alt={profile.firstName} className="object-cover h-full w-full" />
+                        ) : (
+                          <div className="h-full w-full bg-primary flex items-center justify-center text-primary-foreground font-semibold">
+                            {profile.firstName[0]}{profile.lastName[0]}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{profile.firstName} {profile.lastName}</p>
+                        <p className="text-sm text-muted-foreground truncate">@{profile.username}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()
+        )}
+
         {filteredServices.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredServices.map((service) => {
-              const seller = sellers.find((s) => s.id === service.sellerId)
+              const seller = service.seller || sellers.find((s) => s.id === service.sellerId)
               if (!seller) return null
               return <ServiceCard key={service.id} service={service} seller={seller} />
             })}

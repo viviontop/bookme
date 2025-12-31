@@ -28,7 +28,21 @@ export async function getServices() {
             category: s.category,
             images: s.images,
             isActive: s.isActive,
-            createdAt: s.createdAt.toISOString()
+            createdAt: s.createdAt.toISOString(),
+            seller: s.seller ? {
+                id: s.seller.id,
+                email: s.seller.email,
+                username: s.seller.username || undefined,
+                name: s.seller.name,
+                firstName: s.seller.name?.split(" ")[0] || "",
+                lastName: s.seller.name?.split(" ")[1] || "",
+                role: "seller" as const,
+                avatar: s.seller.avatar || undefined,
+                bio: s.seller.bio || undefined,
+                location: s.seller.location || undefined,
+                createdAt: s.seller.createdAt.toISOString(),
+                isVerified: true
+            } : undefined
         }))
     } catch (error) {
         console.error("Error fetching services:", error)
