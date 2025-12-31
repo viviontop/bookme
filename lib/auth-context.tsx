@@ -3,7 +3,8 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type { User, UserRole } from "./types"
 import supabase from "./supabaseClient"
-import { registerUserDB } from "@/app/actions"
+import { registerUserDB, getUserById } from "@/app/actions"
+
 
 interface AuthContextType {
   user: User | null
@@ -33,22 +34,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true
+
+    // Helper to load user with DB profile
+    const loadUserWithProfile = async (supabaseUser: any) => {
+      if (!mounted) return
+
+      // Fetch the actual user profile from database to get correct role
+      const dbUser = await getUserById(supabaseUser.id)
+
+      if (dbUser) {
+        // Merge Supabase auth data with DB profile
+        setUser({
+          ...fromSupabaseUser(supabaseUser),
+          role: dbUser.role as UserRole,
+          avatar: dbUser.avatar,
+          bio: dbUser.bio,
+          location: dbUser.location,
+          banner: dbUser.banner,
+          bannerAspectRatio: dbUser.bannerAspectRatio,
+          kycStatus: dbUser.kycStatus as any,
+          isVerified: dbUser.isVerified
+        })
+      } else {
+        // Fallback to metadata if DB user not found
+        setUser(fromSupabaseUser(supabaseUser))
+      }
+    }
+
     // Initialize from Supabase session
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return
       const session = data.session
       if (session?.user) {
-        setUser(fromSupabaseUser(session.user))
+        await loadUserWithProfile(session.user)
       } else {
         setUser(null)
       }
       setIsLoading(false)
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return
-      if (session?.user) setUser(fromSupabaseUser(session.user))
-      else setUser(null)
+      if (session?.user) {
+        await loadUserWithProfile(session.user)
+      } else {
+        setUser(null)
+      }
     })
 
     return () => {
@@ -60,7 +91,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     const { error, data } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { success: false, error: error.message }
-    if (data.user) setUser(fromSupabaseUser(data.user))
+
+    if (data.user) {
+      // Fetch DB profile to get correct role
+      const dbUser = await getUserById(data.user.id)
+      if (dbUser) {
+        setUser({
+          ...fromSupabaseUser(data.user),
+          role: dbUser.role as UserRole,
+          avatar: dbUser.avatar,
+          bio: dbUser.bio,
+          location: dbUser.location,
+          banner: dbUser.banner,
+          bannerAspectRatio: dbUser.bannerAspectRatio,
+          kycStatus: dbUser.kycStatus as any,
+          isVerified: dbUser.isVerified
+        })
+      } else {
+        setUser(fromSupabaseUser(data.user))
+      }
+    }
+
     return { success: true }
   }
 

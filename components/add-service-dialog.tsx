@@ -158,94 +158,100 @@ export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Service</DialogTitle>
-          <DialogDescription>Create a new service for clients to book</DialogDescription>
+          <DialogTitle className="text-2xl">Add New Service</DialogTitle>
+          <DialogDescription>Create a new service listing for your profile</DialogDescription>
         </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+          {/* Service Images */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Service Images *</Label>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {serviceImages.map((img, index) => (
+                <div
+                  key={index}
+                  className="group relative aspect-square overflow-hidden rounded-lg border-2 border-border bg-muted"
+                >
+                  <Image src={img} alt={`Service ${index + 1}`} fill className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute right-2 top-2 rounded-full bg-destructive p-1.5 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {serviceImages.length < 5 && (
+                <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/50 transition-all hover:border-primary hover:bg-muted">
+                  <Plus className="h-8 w-8 text-muted-foreground" />
+                  <span className="mt-2 text-sm text-muted-foreground">Add Image</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Upload up to 5 images (max 5MB each)
+            </p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title">Service Title</Label>
+            <Label htmlFor="title" className="text-base font-semibold">Service Title *</Label>
             <Input
               id="title"
-              placeholder="e.g., Haircut & Styling"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="e.g. Professional Portrait Photography"
               required
+              className="h-11 text-base"
             />
           </div>
 
+          {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description" className="text-base font-semibold">Description</Label>
             <Textarea
               id="description"
-              placeholder="Describe your service..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              required
+              placeholder="Describe your service, what's included, and what makes it special..."
+              rows={5}
+              className="resize-none text-base"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-6 sm:grid-cols-3">
+            {/* Price */}
             <div className="space-y-2">
-              <Label htmlFor="price">Price ($)</Label>
+              <Label htmlFor="price" className="text-base font-semibold">Price ($) *</Label>
               <Input
                 id="price"
                 type="number"
-                min="0"
-                step="0.01"
-                placeholder="50.00"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                placeholder="99"
                 required
+                min="0"
+                step="0.01"
+                className="h-11 text-base"
               />
             </div>
 
+            {/* Duration */}
             <div className="space-y-2">
-              <Label htmlFor="duration">Duration (min)</Label>
+              <Label htmlFor="duration" className="text-base font-semibold">Duration (min) *</Label>
               <Input
                 id="duration"
                 type="number"
-                min="15"
-                step="15"
-                placeholder="60"
                 value={formData.duration}
                 onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="images">Service Photos</Label>
-            <div className="space-y-2">
-              <input
-                type="file"
-                id="images"
-                accept="image/*"
-                multiple
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-              <Button
-                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => document.getElementById("images")?.click()}

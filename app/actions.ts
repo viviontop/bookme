@@ -50,6 +50,39 @@ export async function getServices() {
     }
 }
 
+
+export async function getUserById(userId: string) {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        })
+
+        if (!user) return null
+
+        return {
+            id: user.id,
+            email: user.email,
+            username: user.username || undefined,
+            role: user.role || "buyer",
+            firstName: user.name?.split(" ")[0] || "",
+            lastName: user.name?.split(" ")[1] || "",
+            birthDate: "",
+            phone: "",
+            avatar: user.avatar || undefined,
+            bio: user.bio || undefined,
+            location: user.location || undefined,
+            banner: user.banner || undefined,
+            bannerAspectRatio: user.bannerAspectRatio || undefined,
+            kycStatus: user.kycStatus || "pending",
+            createdAt: user.createdAt.toISOString(),
+            isVerified: user.isVerified || false
+        }
+    } catch (error) {
+        console.error("Error fetching user by ID:", error)
+        return null
+    }
+}
+
 export async function getUsers() {
     try {
         const users = await prisma.user.findMany()
@@ -157,19 +190,24 @@ export async function getUserByUsername(username: string) {
 
         if (!user) return null
 
-        // Map to frontend user type (simplified)
+        // Map to frontend user type with all fields
         return {
             id: user.id,
             email: user.email,
             username: user.username || undefined,
             firstName: user.name?.split(" ")[0] || "",
             lastName: user.name?.split(" ")[1] || "",
-            role: "seller" as any,
+            role: user.role as any,
             avatar: user.avatar || undefined,
             bio: user.bio || undefined,
             location: user.location || undefined,
+            banner: user.banner || undefined,
+            bannerAspectRatio: user.bannerAspectRatio || undefined,
+            birthDate: "",
+            phone: "",
+            kycStatus: user.kycStatus as any,
             createdAt: user.createdAt.toISOString(),
-            isVerified: true
+            isVerified: user.isVerified
         }
     } catch (error) {
         console.error("Error fetching user by username:", error)

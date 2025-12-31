@@ -169,13 +169,13 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
       </DialogTrigger>
 
       {/* Service Detail Modal */}
-      <DialogContent className="max-w-4xl p-0 overflow-hidden gap-0 sm:max-h-[90vh] bg-background border-none shadow-2xl">
+      <DialogContent className="max-w-6xl p-0 overflow-hidden gap-0 max-h-[95vh] bg-background border-none shadow-2xl">
         {/* Hidden title for screen readers */}
         <DialogTitle className="sr-only">{service.title}</DialogTitle>
 
-        <div className="grid md:grid-cols-[1.2fr_1fr] h-full max-h-[90vh]">
+        <div className="grid md:grid-cols-[1.5fr_1fr] h-full max-h-[95vh]">
           {/* Modal Carousel */}
-          <div className="relative bg-black aspect-video md:aspect-auto md:h-full overflow-hidden">
+          <div className="relative bg-black aspect-square md:aspect-auto md:h-full overflow-hidden group/modal-carousel">
             <div className="h-full w-full absolute inset-0 md:relative" ref={modalEmblaRef}>
               <div className="flex h-full w-full touch-pan-y">
                 {images.map((img, index) => (
