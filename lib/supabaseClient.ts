@@ -21,7 +21,11 @@ if (typeof window !== 'undefined') {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  },
 });
 
 export default supabase;

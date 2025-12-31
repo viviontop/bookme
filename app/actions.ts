@@ -123,3 +123,37 @@ export async function registerUserDB(data: {
         return { success: false, error: `Database error: ${String(error)}` }
     }
 }
+
+export async function getUserByUsername(username: string) {
+    try {
+        // Remove @ if present
+        const cleanUsername = username.replace("@", "")
+
+        const user = await prisma.user.findUnique({
+            where: { username: cleanUsername },
+            include: {
+                services: true
+            }
+        })
+
+        if (!user) return null
+
+        // Map to frontend user type (simplified)
+        return {
+            id: user.id,
+            email: user.email,
+            username: user.username || undefined,
+            firstName: user.name?.split(" ")[0] || "",
+            lastName: user.name?.split(" ")[1] || "",
+            role: "seller" as any,
+            avatar: user.avatar || undefined,
+            bio: user.bio || undefined,
+            location: user.location || undefined,
+            createdAt: user.createdAt.toISOString(),
+            isVerified: true
+        }
+    } catch (error) {
+        console.error("Error fetching user by username:", error)
+        return null
+    }
+}

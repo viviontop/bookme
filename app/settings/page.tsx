@@ -128,9 +128,9 @@ export default function SettingsPage() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
-    
+
     const updateData: Partial<User> = { ...profileData }
-    
+
     // If avatar was changed, use the preview (which is the cropped image)
     // Otherwise, preserve the existing avatar
     if (avatarPreview && avatarPreview !== user?.avatar) {
@@ -139,12 +139,12 @@ export default function SettingsPage() {
       // Preserve existing avatar if not changed
       updateData.avatar = user.avatar
     }
-    
+
     // Preserve existing banner if not changed
     if (user?.banner) {
       updateData.banner = user.banner
     }
-    
+
     updateUser(updateData)
     // Also update in data context to keep it in sync
     if (user) {
@@ -231,42 +231,42 @@ export default function SettingsPage() {
 
   const handleDeleteVerification = () => {
     if (!user) return
-    
+
     // Verify phone number matches
     if (phoneVerification !== user.phone) {
       setSavedMessage("Phone number does not match")
       setTimeout(() => setSavedMessage(""), 3000)
       return
     }
-    
+
     // Generate a simple verification code (in production, this would be sent via SMS)
     const expectedCode = user.phone.slice(-4) // Last 4 digits as verification code
-    
+
     if (verificationCode !== expectedCode) {
       setSavedMessage("Invalid verification code")
       setTimeout(() => setSavedMessage(""), 3000)
       return
     }
-    
+
     // Delete account
     const users: User[] = JSON.parse(localStorage.getItem("users") || "[]")
     const updatedUsers = users.filter((u) => u.id !== user.id)
     localStorage.setItem("users", JSON.stringify(updatedUsers))
-    
+
     // Clear appointments, services, reviews related to this user
     const updatedAppointments = appointments.filter(
       (a) => a.buyerId !== user.id && a.sellerId !== user.id
     )
     localStorage.setItem("appointments", JSON.stringify(updatedAppointments))
-    
+
     const updatedServices = services.filter((s) => s.sellerId !== user.id)
     localStorage.setItem("services", JSON.stringify(updatedServices))
-    
+
     const updatedReviews = reviews.filter(
       (r) => r.reviewerId !== user.id && r.revieweeId !== user.id
     )
     localStorage.setItem("reviews", JSON.stringify(updatedReviews))
-    
+
     // Logout and redirect
     logout()
     router.push("/")
@@ -401,6 +401,12 @@ export default function SettingsPage() {
                         </Button>
                         <p className="mt-1 text-xs text-muted-foreground">JPG, PNG or GIF. Max 5MB</p>
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="username">Username</Label>
+                      <Input id="username" value={`@${user.username || ""}`} disabled className="bg-muted" />
+                      <p className="text-xs text-muted-foreground">Username cannot be changed</p>
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -692,7 +698,7 @@ export default function SettingsPage() {
             <Alert>
               <Shield className="h-4 w-4" />
               <AlertDescription>
-                Two-Factor Authentication (2FA) adds an extra layer of security to your account. 
+                Two-Factor Authentication (2FA) adds an extra layer of security to your account.
                 You'll need to enter a code from your authenticator app when signing in.
               </AlertDescription>
             </Alert>
@@ -732,7 +738,7 @@ export default function SettingsPage() {
               This action cannot be undone. This will permanently delete your account and all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
+
           {!showVerificationStep ? (
             <>
               <div className="space-y-4 py-4">

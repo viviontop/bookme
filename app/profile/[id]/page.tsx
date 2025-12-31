@@ -137,11 +137,11 @@ export default function ProfilePage({ params }: { readonly params: Promise<{ id:
         {/* Profile Header */}
         <Card className="overflow-hidden">
           <div className="relative w-full bg-gradient-to-r from-primary/20 to-primary/5 overflow-hidden">
-            <div 
+            <div
               className="relative w-full"
               style={{
-                aspectRatio: profileUser.bannerAspectRatio 
-                  ? `${profileUser.bannerAspectRatio} / 1` 
+                aspectRatio: profileUser.bannerAspectRatio
+                  ? `${profileUser.bannerAspectRatio} / 1`
                   : '5 / 1',
                 minHeight: '16rem',
                 maxHeight: '28rem'
@@ -194,6 +194,7 @@ export default function ProfilePage({ params }: { readonly params: Promise<{ id:
                   <h1 className="text-2xl font-bold text-foreground">
                     {profileUser.firstName} {profileUser.lastName}
                   </h1>
+                  <p className="text-muted-foreground">@{profileUser.username || "username"}</p>
                   {profileUser.isVerified && (
                     <Badge variant="secondary" className="gap-1">
                       <Shield className="h-3 w-3" />

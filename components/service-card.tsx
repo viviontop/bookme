@@ -45,7 +45,7 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
           <div className="flex h-full w-full touch-pan-y">
             {images.map((img, index) => (
               <div className="flex-[0_0_100%] min-w-0 relative" key={index}>
-                <Link href={`/profile/${seller.id}`} className="block h-full w-full">
+                <Link href={seller.username ? `/${seller.username}` : `/profile/${seller.id}`} className="block h-full w-full">
                   <Image
                     src={img}
                     alt={`${service.title} - Image ${index + 1}`}
@@ -90,7 +90,7 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
           </Badge>
         </div>
       </div>
-      <Link href={`/profile/${seller.id}`}>
+      <Link href={seller.username ? `/${seller.username}` : `/profile/${seller.id}`}>
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
