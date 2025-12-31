@@ -7,7 +7,7 @@ import supabase from "./supabaseClient"
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   updateUser: (data: Partial<User>) => void
@@ -55,11 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     const { error, data } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return false
+    if (error) return { success: false, error: error.message }
     if (data.user) setUser(fromSupabaseUser(data.user))
-    return true
+    return { success: true }
   }
 
   const register = async (data: RegisterData): Promise<{ success: boolean; error?: string }> => {
@@ -69,13 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
       options: {
-        data: { 
-          role, 
-          firstName, 
-          lastName, 
+        data: {
+          role,
+          firstName,
+          lastName,
           full_name: fullName, // Include full_name for database trigger
-          birthDate, 
-          phone 
+          birthDate,
+          phone
         },
       },
     })

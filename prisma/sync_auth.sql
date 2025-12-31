@@ -16,6 +16,8 @@ ON CONFLICT (id) DO NOTHING;
 CREATE OR REPLACE FUNCTION public.sync_auth_user()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   user_name TEXT;

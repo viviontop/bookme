@@ -31,11 +31,15 @@ export default function LoginPage() {
     setError("")
     setIsLoading(true)
 
-    const success = await login(email, password)
-    if (success) {
+    const result = await login(email, password)
+    if (result.success) {
       router.push("/feed")
     } else {
-      setError("Invalid email or password")
+      if (result.error?.includes("Email not confirmed")) {
+        setError("Please verify your email address to sign in.")
+      } else {
+        setError(result.error || "Invalid email or password")
+      }
     }
     setIsLoading(false)
   }

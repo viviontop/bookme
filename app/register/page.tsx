@@ -12,11 +12,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, ShoppingBag, Store, ArrowLeft, ArrowRight, Check } from "lucide-react"
+import { Eye, EyeOff, ShoppingBag, Store, ArrowLeft, ArrowRight, Check, Mail } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1)
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false)
   const [role, setRole] = useState<UserRole | null>(null)
   const [formData, setFormData] = useState({
     email: "",
@@ -68,7 +76,7 @@ export default function RegisterPage() {
     })
 
     if (result.success) {
-      router.push("/feed")
+      setShowVerificationDialog(true)
     } else {
       setError(result.error || "Registration failed")
     }
@@ -307,6 +315,28 @@ export default function RegisterPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <Mail className="h-6 w-6 text-primary" />
+            </div>
+            <DialogTitle className="text-center">Check your email</DialogTitle>
+            <DialogDescription className="text-center">
+              We&apos;ve sent a verification link to <span className="font-medium text-foreground">{formData.email}</span>. Please check your inbox to confirm your account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button onClick={() => router.push("/login")} className="w-full">
+              Go to Login
+            </Button>
+            <Button variant="ghost" onClick={() => setShowVerificationDialog(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
