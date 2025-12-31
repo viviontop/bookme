@@ -1,11 +1,18 @@
-import { PrismaClient, type Prisma } from '@prisma/client';
+import { Pool } from 'pg'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '@prisma/client'
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __prisma: PrismaClient | undefined;
-}
+const connectionString = process.env.DATABASE_URL
 
-const prisma = globalThis.__prisma ?? new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalThis.__prisma = prisma;
+const pool = new Pool({ connectionString })
+// Using adapter-pg which is required for Prisma v7 when schema url is removed
+const adapter = new PrismaPg(pool)
 
-export default prisma;
+// Use global singleton to prevent multiple instances in dev
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+
+const prisma = globalForPrisma.prisma || new PrismaClient({ adapter })
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+export default prisma
