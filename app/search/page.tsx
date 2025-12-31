@@ -37,15 +37,7 @@ export default function SearchPage() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500])
   const [verifiedOnly, setVerifiedOnly] = useState(false)
 
-  useEffect(() => {
-    seedDemoData()
-  }, [])
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login")
-    }
-  }, [authLoading, user, router])
+  // Removed auth redirects for guest access
 
   const sellers = useMemo(() => {
     return users.filter((u) => u.role === "seller")
@@ -125,13 +117,7 @@ export default function SearchPage() {
     e.preventDefault()
   }
 
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
-  }
+  // Removed loading spinner
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background">

@@ -19,15 +19,7 @@ export default function FeedPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [shuffleKey, setShuffleKey] = useState(0)
 
-  useEffect(() => {
-    seedDemoData()
-  }, [])
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login")
-    }
-  }, [authLoading, user, router])
+  // Removed useEffect auth check to allow guest access
 
   // Get sellers from users list
   const sellers = useMemo(() => {
@@ -49,23 +41,17 @@ export default function FeedPage() {
       seed = (seed * 9301 + 49297) % 233280
       return seed / 233280
     }
-    
+
     // Fisher-Yates shuffle with seeded random
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(seededRandom() * (i + 1))
-      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
-    
+
     return shuffled
   }, [services, selectedCategory, shuffleKey])
 
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
-  }
+  // Removed loading spinner to allow optimistic rendering or guest view
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background">

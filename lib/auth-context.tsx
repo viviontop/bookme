@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type { User, UserRole } from "./types"
 import supabase from "./supabaseClient"
+import { registerUserDB } from "@/app/actions"
 
 interface AuthContextType {
   user: User | null
@@ -75,12 +76,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role,
           firstName,
           lastName,
-          full_name: fullName, // Include full_name for database trigger
+          full_name: fullName,
           birthDate,
           phone
         },
       },
     })
+
+    if (!error && res.user) {
+      // Force sync to DB to ensure username is saved
+      await registerUserDB({
+        id: res.user.id,
+        email,
+        username,
+        firstName,
+        lastName
+      })
+    }
+
     if (error) return { success: false, error: error.message || String(error) }
     if (res.user) setUser(fromSupabaseUser(res.user))
     return { success: true }

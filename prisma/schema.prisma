@@ -27,6 +27,10 @@ model Service {
   title       String
   description String?
   price       Int
+  duration    Int           @default(60)
+  category    String        @default("General")
+  images      String[]
+  isActive    Boolean       @default(true)
   seller      User          @relation(fields: [sellerId], references: [id])
   sellerId    String
   createdAt   DateTime      @default(now())

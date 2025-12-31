@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react"
 import type { Service, Availability, Appointment, Review, User } from "./types"
+import { getServices, getUsers, createService, registerUserDB } from "@/app/actions"
 
 interface DataContextType {
   services: Service[]
@@ -32,95 +33,60 @@ const DataContext = createContext<DataContextType | undefined>(undefined)
 
 export function DataProvider({ children }: { readonly children: ReactNode }) {
   const [services, setServices] = useState<Service[]>([])
-  const [availability, setAvailabilityState] = useState<Availability[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
-  const [users, setUsers] = useState<User[]>([])
+  const [availability, setAvailabilityState] = useState<Availability[]>([])
 
   useEffect(() => {
-    const loadData = () => {
+    const loadData = async () => {
+      // Load real data from DB
       try {
-        const storedServices = localStorage.getItem("services")
-        const storedAvailability = localStorage.getItem("availability")
+        const [dbServices, dbUsers] = await Promise.all([getServices(), getUsers()])
+        if (dbServices) setServices(dbServices as Service[])
+        if (dbUsers) setUsers(dbUsers as User[])
+      } catch (error) {
+        console.error("Failed to load data from DB:", error)
+      }
+
+      // Load local storage for other items for now
+      try {
         const storedAppointments = localStorage.getItem("appointments")
         const storedReviews = localStorage.getItem("reviews")
-        const storedUsers = localStorage.getItem("users")
+        const storedAvailability = localStorage.getItem("availability")
 
-        if (storedServices) setServices(JSON.parse(storedServices))
-        if (storedAvailability) setAvailabilityState(JSON.parse(storedAvailability))
-        if (storedAppointments) {
-          const parsed = JSON.parse(storedAppointments)
-          setAppointments(parsed)
-        } else {
-          setAppointments([])
-        }
+        if (storedAppointments) setAppointments(JSON.parse(storedAppointments))
         if (storedReviews) setReviews(JSON.parse(storedReviews))
-        if (storedUsers) setUsers(JSON.parse(storedUsers))
+        if (storedAvailability) setAvailabilityState(JSON.parse(storedAvailability))
       } catch (error) {
-        console.error("Error loading data from localStorage:", error)
+        console.error("Error loading local storage:", error)
       }
     }
-
     loadData()
-
-    // Refresh data periodically to catch updates
-    const interval = setInterval(() => {
-      loadData()
-    }, 2000) // Refresh every 2 seconds
-
-    // Also listen for storage changes (in case data is updated in another tab)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "appointments" && e.newValue) {
-        try {
-          setAppointments(JSON.parse(e.newValue))
-        } catch (error) {
-          console.error("Error parsing appointments from storage event:", error)
-        }
-      } else if (e.key === "services" && e.newValue) {
-        try {
-          setServices(JSON.parse(e.newValue))
-        } catch (error) {
-          console.error("Error parsing services from storage event:", error)
-        }
-      } else if (e.key === "users" && e.newValue) {
-        try {
-          setUsers(JSON.parse(e.newValue))
-        } catch (error) {
-          console.error("Error parsing users from storage event:", error)
-        }
-      } else if (e.key === "reviews" && e.newValue) {
-        try {
-          setReviews(JSON.parse(e.newValue))
-        } catch (error) {
-          console.error("Error parsing reviews from storage event:", error)
-        }
-      }
-    }
-
-    globalThis.window?.addEventListener("storage", handleStorageChange)
-    return () => {
-      clearInterval(interval)
-      globalThis.window?.removeEventListener("storage", handleStorageChange)
-    }
   }, [])
 
-  const addService = (service: Omit<Service, "id">) => {
-    const newService = { ...service, id: crypto.randomUUID() }
-    const updated = [...services, newService]
-    setServices(updated)
-    localStorage.setItem("services", JSON.stringify(updated))
+  const addService = async (service: Omit<Service, "id">) => {
+    const res = await createService(service)
+    if (res.success && res.service) {
+      const newService = {
+        ...service,
+        id: res.service.id,
+        createdAt: res.service.createdAt.toISOString()
+      } as Service
+      const updated = [newService, ...services]
+      setServices(updated)
+      // No local storage update for services anymore
+    }
   }
 
   const updateService = (id: string, data: Partial<Service>) => {
-    const updated = services.map((s) => (s.id === id ? { ...s, ...data } : s))
-    setServices(updated)
-    localStorage.setItem("services", JSON.stringify(updated))
+    // Placeholder for future server action
+    console.log("Update service not implemented yet for DB", id, data)
   }
 
   const deleteService = (id: string) => {
-    const updated = services.filter((s) => s.id !== id)
-    setServices(updated)
-    localStorage.setItem("services", JSON.stringify(updated))
+    // Placeholder for future server action
+    console.log("Delete service not implemented yet for DB", id)
   }
 
   const setAvailabilityData = (avail: Omit<Availability, "id">[]) => {
@@ -134,7 +100,6 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
     const updated = [...appointments, newAppt]
     setAppointments(updated)
     localStorage.setItem("appointments", JSON.stringify(updated))
-    // Force a re-render by updating state
     return newAppt
   }
 
@@ -173,7 +138,7 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
   const updateUser = (id: string, data: Partial<User>) => {
     const updated = users.map((u) => (u.id === id ? { ...u, ...data } : u))
     setUsers(updated)
-    localStorage.setItem("users", JSON.stringify(updated))
+    // We might want to sync this to DB too if it's profile update
   }
 
   const approveKYC = (userId: string) => {
@@ -185,7 +150,6 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
   }
 
   const getSellerEarnings = (sellerId: string) => {
-    // Include both confirmed and completed appointments (payment processed on booking)
     const paidAppointments = appointments.filter(
       (a) => a.sellerId === sellerId && (a.status === "confirmed" || a.status === "completed") && a.sellerEarnings
     )
@@ -204,7 +168,6 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
   }
 
   const getTotalSales = () => {
-    // Include both confirmed and completed appointments (payment processed on booking)
     const paidAppointments = appointments.filter(
       (a) => (a.status === "confirmed" || a.status === "completed") && a.amount
     )
@@ -232,21 +195,14 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
   }
 
   const syncUser = (user: User) => {
-    // Check if user already exists
+    // This is primarily used by the UserSync component to ensure current user is in the list
+    // We can just add it to state if not present
     const exists = users.find((u) => u.id === user.id)
     if (!exists) {
-      const updated = [...users, user]
-      setUsers(updated)
-      localStorage.setItem("users", JSON.stringify(updated))
-    } else {
-      // Optional: Update existing user with fresh data from Auth
-      const updated = users.map((u) => (u.id === user.id ? { ...u, ...user } : u))
-      // Only update if actually changed (deep check omitted for speed, reliant on React diffing)
-      if (JSON.stringify(exists) !== JSON.stringify(user)) {
-        setUsers(updated)
-        localStorage.setItem("users", JSON.stringify(updated))
-      }
+      setUsers(prev => [...prev, user])
     }
+    // Also ensuring it's in DB is handled by registerUserDB call in auth-context or here
+    // For now, let's trust the auth-flow to do the heavy lifting
   }
 
   const value = useMemo(
