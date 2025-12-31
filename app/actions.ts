@@ -17,7 +17,7 @@ export async function getServices() {
             },
         })
 
-        return services.map(s => ({
+        return services.map((s: any) => ({
             id: s.id,
             sellerId: s.sellerId,
             title: s.title,
@@ -38,11 +38,11 @@ export async function getServices() {
 export async function getUsers() {
     try {
         const users = await prisma.user.findMany()
-        return users.map(u => ({
+        return users.map((u: any) => ({
             id: u.id,
             email: u.email,
             username: u.username || undefined,
-            role: "buyer" as any, // Default, needed in schema
+            role: "buyer" as const, // Default, needed in schema
             firstName: u.name?.split(" ")[0] || "",
             lastName: u.name?.split(" ")[1] || "",
             birthDate: "",
@@ -56,21 +56,31 @@ export async function getUsers() {
     }
 }
 
-export async function createService(data: any) { // Typed as any momentarily to bridge gap
+export async function createService(data: any) {
     try {
+        if (!data.sellerId) {
+            return { success: false, error: "Authentication required (missing sellerId)" }
+        }
+
+        // Ensure images is an array of strings
+        const images = Array.isArray(data.images) ? data.images : []
+
         const service = await prisma.service.create({
             data: {
                 title: data.title,
                 description: data.description,
-                price: data.price,
-                duration: data.duration,
-                category: data.category,
-                images: data.images,
-                isActive: data.isActive,
+                price: parseFloat(data.price), // Ensure number
+                duration: parseInt(data.duration), // Ensure number
+                category: data.category || "General",
+                images: images,
+                isActive: data.isActive ?? true,
                 sellerId: data.sellerId,
+                rating: 0,
+                reviewCount: 0
             }
         })
         revalidatePath("/")
+        revalidatePath("/feed")
         return { success: true, service }
     } catch (error) {
         console.error("Error creating service:", error)
@@ -85,8 +95,14 @@ export async function registerUserDB(data: {
     firstName: string
     lastName: string
 }) {
+    console.log("Registering user in DB:", data) // Audit log
     try {
-        await prisma.user.upsert({
+        if (!data.username) {
+            console.error("Username is missing for DB registration")
+            return { success: false, error: "Username is required" }
+        }
+
+        const user = await prisma.user.upsert({
             where: { id: data.id },
             update: {
                 email: data.email,
@@ -100,9 +116,10 @@ export async function registerUserDB(data: {
                 name: `${data.firstName} ${data.lastName}`,
             },
         })
+        console.log("User registered in DB successfully:", user.id)
         return { success: true }
     } catch (error) {
         console.error("Error registering user in DB:", error)
-        return { success: false, error: String(error) }
+        return { success: false, error: `Database error: ${String(error)}` }
     }
 }

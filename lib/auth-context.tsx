@@ -85,13 +85,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!error && res.user) {
       // Force sync to DB to ensure username is saved
-      await registerUserDB({
+      const dbResult = await registerUserDB({
         id: res.user.id,
         email,
         username,
         firstName,
         lastName
       })
+
+      if (!dbResult.success) {
+        // If DB save fails, we should probably warn the user or fail the registration
+        // For now, let's return the error so the UI sees it
+        console.error("Failed to save user to DB:", dbResult.error)
+        return { success: false, error: "Account created but profile setup failed. Please contact support." }
+      }
     }
 
     if (error) return { success: false, error: error.message || String(error) }

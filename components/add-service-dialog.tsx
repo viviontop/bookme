@@ -95,7 +95,7 @@ export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) 
 
     // Limit to 5 images to prevent quota issues
     const filesToProcess = Array.from(files).slice(0, 5 - serviceImages.length)
-    
+
     if (filesToProcess.length < Array.from(files).length) {
       alert("Maximum 5 images allowed. Only the first 5 will be uploaded.")
     }
@@ -109,7 +109,7 @@ export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) 
         alert("Image size must be less than 5MB")
         continue
       }
-      
+
       try {
         const compressedImage = await compressImage(file, 800, 600, 0.7)
         setServiceImages((prev) => [...prev, compressedImage])
@@ -124,28 +124,36 @@ export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) 
     setServiceImages((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
 
-    const images = serviceImages.length > 0 
-      ? serviceImages 
+    const images = serviceImages.length > 0
+      ? serviceImages
       : ["/placeholder.svg?height=300&width=400&query=" + encodeURIComponent(formData.title)]
 
-    addService({
-      sellerId: user.id,
-      title: formData.title,
-      description: formData.description,
-      price: Number.parseFloat(formData.price),
-      duration: Number.parseInt(formData.duration),
-      category: formData.category,
-      images,
-      isActive: true,
-    })
+    try {
+      const result = await addService({
+        sellerId: user.id,
+        title: formData.title,
+        description: formData.description,
+        price: Number.parseFloat(formData.price),
+        duration: Number.parseInt(formData.duration),
+        category: formData.category,
+        images,
+        isActive: true,
+      })
 
-    setFormData({ title: "", description: "", price: "", duration: "", category: "" })
-    setServiceImages([])
-    onOpenChange(false)
+      if (result.success) {
+        setFormData({ title: "", description: "", price: "", duration: "", category: "" })
+        setServiceImages([])
+        onOpenChange(false)
+      } else {
+        alert(result.error || "Failed to create service")
+      }
+    } catch (error) {
+      alert("An unexpected error occurred")
+    }
   }
 
   return (

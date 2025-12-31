@@ -10,7 +10,7 @@ interface DataContextType {
   appointments: Appointment[]
   reviews: Review[]
   users: User[]
-  addService: (service: Omit<Service, "id">) => void
+  addService: (service: Omit<Service, "id">) => Promise<{ success: boolean; error?: string }>
   updateService: (id: string, data: Partial<Service>) => void
   deleteService: (id: string) => void
   setAvailability: (avail: Omit<Availability, "id">[]) => void
@@ -75,8 +75,9 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
       } as Service
       const updated = [newService, ...services]
       setServices(updated)
-      // No local storage update for services anymore
+      return { success: true }
     }
+    return { success: false, error: res.error }
   }
 
   const updateService = (id: string, data: Partial<Service>) => {
