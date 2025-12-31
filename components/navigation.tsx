@@ -139,7 +139,7 @@ export function Navigation() {
                         Manage Requests
                       </Button>
                     </Link>
-                    <Link href={`/profile/${user.id}?addService=true`}>
+                    <Link href={`/profile/${user.username || user.id}?addService=true`}>
                       <Button
                         variant="ghost"
                         className="w-full justify-start gap-2"
@@ -161,7 +161,7 @@ export function Navigation() {
                         Admin
                       </Button>
                     </Link>
-                    <Link href={`/profile/${user.id}?addService=true`}>
+                    <Link href={`/profile/${user.username || user.id}?addService=true`}>
                       <Button
                         variant="ghost"
                         className="w-full justify-start gap-2"
@@ -181,9 +181,9 @@ export function Navigation() {
                     Settings
                   </Button>
                 </Link>
-                <Link href={`/profile/${user.id}`}>
+                <Link href={`/profile/${user.username || user.id}`}>
                   <Button
-                    variant={pathname === `/profile/${user.id}` ? "secondary" : "ghost"}
+                    variant={pathname === `/profile/${user.username || user.id}` ? "secondary" : "ghost"}
                     className="w-full justify-start gap-2"
                   >
                     <User className="h-4 w-4" />
@@ -225,7 +225,7 @@ export function Navigation() {
             </Link>
           ))}
           {(user.role === "seller" || user.role === "admin") && (
-            <Link href={`/profile/${user.id}?addService=true`}>
+            <Link href={`/profile/${user.username || user.id}?addService=true`}>
               <Button variant="default" size="sm" className="gap-2">
                 <Plus className="h-4 w-4" />
                 Add Service
@@ -279,7 +279,7 @@ export function Navigation() {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href={`/profile/${user.id}`} className="cursor-pointer">
+                <Link href={`/profile/${user.username || user.id}`} className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </Link>

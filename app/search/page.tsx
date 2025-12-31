@@ -254,7 +254,7 @@ export default function SearchPage() {
                 <h2 className="text-lg font-semibold mb-4">Profiles</h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {matchingProfiles.map(profile => (
-                    <div key={profile.id} className="flex items-center gap-3 p-4 rounded-lg bg-card border hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push(profile.username ? `/${profile.username}` : `/profile/${profile.id}`)}>
+                    <div key={profile.id} className="flex items-center gap-3 p-4 rounded-lg bg-card border hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push(`/profile/${profile.username || profile.id}`)}>
                       <div className="h-12 w-12 rounded-full overflow-hidden relative border">
                         {/* Avatar Fallback/Image */}
                         {profile.avatar ? (

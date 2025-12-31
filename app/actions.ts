@@ -57,13 +57,19 @@ export async function getUsers() {
             id: u.id,
             email: u.email,
             username: u.username || undefined,
-            role: "buyer" as const, // Default, needed in schema
+            role: u.role || "buyer", // Use actual role from DB
             firstName: u.name?.split(" ")[0] || "",
             lastName: u.name?.split(" ")[1] || "",
             birthDate: "",
             phone: "",
+            avatar: u.avatar || undefined,
+            bio: u.bio || undefined,
+            location: u.location || undefined,
+            banner: u.banner || undefined,
+            bannerAspectRatio: u.bannerAspectRatio || undefined,
+            kycStatus: u.kycStatus || "pending",
             createdAt: u.createdAt.toISOString(),
-            isVerified: true
+            isVerified: u.isVerified || false
         }))
     } catch (error) {
         console.error("Error fetching users:", error)

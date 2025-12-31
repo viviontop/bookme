@@ -78,13 +78,13 @@ export default function AdminPage() {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
     const monthName = date.toLocaleDateString("en-US", { month: "short", year: "numeric" })
-    
+
     const monthAppointments = appointments.filter(
       (a) => (a.status === "completed" || a.status === "confirmed") && a.paidAt && a.paidAt.startsWith(monthKey)
     )
     const monthTotal = monthAppointments.reduce((sum, a) => sum + (a.amount || 0), 0)
     const monthPlatformFee = monthAppointments.reduce((sum, a) => sum + (a.platformFee || 0), 0)
-    
+
     salesChartData.push({
       month: monthName,
       total: monthTotal,
@@ -235,8 +235,8 @@ export default function AdminPage() {
                                 <div className="flex items-center gap-2">
                                   <div
                                     className="h-3 w-3 rounded-full"
-                                    style={{ 
-                                      backgroundColor: entry.dataKey === "total" ? "#3b82f6" : "#10b981" 
+                                    style={{
+                                      backgroundColor: entry.dataKey === "total" ? "#3b82f6" : "#10b981"
                                     }}
                                   />
                                   <span className="text-sm text-foreground">
@@ -335,19 +335,18 @@ export default function AdminPage() {
                       const statusHash = u.id.split("").reduce((acc, char) => acc + (char.codePointAt(0) || 0), 0)
                       const statusOptions: Array<"online" | "busy" | "offline"> = ["online", "busy", "offline"]
                       const userStatus = statusOptions[statusHash % 3]
-                      
+
                       return (
                         <TableRow key={u.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               <div
-                                className={`h-2.5 w-2.5 rounded-full ${
-                                  userStatus === "online"
+                                className={`h-2.5 w-2.5 rounded-full ${userStatus === "online"
                                     ? "bg-green-500"
                                     : userStatus === "busy"
                                       ? "bg-yellow-500"
                                       : "bg-gray-400"
-                                }`}
+                                  }`}
                                 title={userStatus.charAt(0).toUpperCase() + userStatus.slice(1)}
                               />
                               {u.firstName} {u.lastName}
@@ -391,7 +390,7 @@ export default function AdminPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Link href={`/profile/${u.id}`}>
+                              <Link href={`/profile/${u.username || u.id}`}>
                                 <Button variant="ghost" size="sm">
                                   <Eye className="h-4 w-4" />
                                 </Button>

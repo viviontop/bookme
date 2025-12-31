@@ -153,7 +153,7 @@ export default function AppointmentsPage() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <Link href={`/profile/${otherUser?.id}`} className="flex items-center gap-3">
+            <Link href={`/profile/${otherUser?.username || otherUser?.id}`} className="flex items-center gap-3">
               <Avatar className="h-12 w-12">
                 <AvatarImage src={otherUser?.avatar || "/placeholder.svg"} alt={otherUser?.firstName} />
                 <AvatarFallback className="bg-primary text-primary-foreground">

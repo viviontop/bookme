@@ -48,7 +48,7 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
   // Component for the Seller Info (used in both Card and Modal)
   const SellerInfo = ({ className = "" }: { className?: string }) => (
     <div className={`flex items-center gap-2 ${className}`}>
-      <Link href={seller.username ? `/${seller.username}` : `/profile/${seller.id}`} onClick={(e) => e.stopPropagation()}>
+      <Link href={`/profile/${seller.username || seller.id}`} onClick={(e) => e.stopPropagation()}>
         <Avatar className="h-8 w-8 cursor-pointer hover:opacity-80 transition-opacity">
           <AvatarImage src={seller.avatar || "/placeholder.svg"} alt={seller.firstName} />
           <AvatarFallback className="bg-primary text-xs text-primary-foreground">
@@ -58,7 +58,7 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
         </Avatar>
       </Link>
       <div className="min-w-0 flex-1">
-        <Link href={seller.username ? `/${seller.username}` : `/profile/${seller.id}`} onClick={(e) => e.stopPropagation()}>
+        <Link href={`/profile/${seller.username || seller.id}`} onClick={(e) => e.stopPropagation()}>
           <p className="truncate text-sm font-medium text-foreground cursor-pointer hover:underline">
             {seller.firstName} {seller.lastName}
           </p>
@@ -256,7 +256,7 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
 
             <div className="p-4 md:p-6 border-t border-border bg-muted/5 flex justify-between items-center gap-4">
               <Button variant="outline" className="flex-1" asChild>
-                <Link href={seller.username ? `/${seller.username}` : `/profile/${seller.id}`}>
+                <Link href={`/profile/${seller.username || seller.id}`}>
                   View Profile
                 </Link>
               </Button>
