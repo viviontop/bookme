@@ -37,6 +37,22 @@ export default function ProfilePage({ params }: { readonly params: Promise<{ id:
     seedDemoData()
   }, [])
 
+  // Check if ID is actually a username and redirect
+  useEffect(() => {
+    const checkIfUsername = async () => {
+      const idParam = resolvedParams.id
+      // If it doesn't look like a CUID (alphanumeric with specific pattern), treat as username
+      if (idParam && !idParam.match(/^[a-z0-9]{25}$/i)) {
+        // It's likely a username, try to find the user
+        const foundUser = users.find(u => u.username === idParam)
+        if (foundUser) {
+          router.replace(`/profile/${foundUser.id}`, { scroll: false })
+        }
+      }
+    }
+    checkIfUsername()
+  }, [resolvedParams.id, users, router])
+
   useEffect(() => {
     if (!authLoading && !currentUser) {
       router.push("/login")

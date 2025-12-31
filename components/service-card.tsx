@@ -11,10 +11,13 @@ import { deleteService } from "@/app/actions"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog"
-import { Star, Clock, MapPin, Shield, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogHeader, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Star, Clock, MapPin, Shield, X, ChevronLeft, ChevronRight, Trash, Flag } from "lucide-react"
 import useEmblaCarousel from "embla-carousel-react"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
 
 interface ServiceCardProps {
   service: Service
@@ -23,7 +26,36 @@ interface ServiceCardProps {
 
 export function ServiceCard({ service, seller }: ServiceCardProps) {
   const { getSellerRating } = useData()
+  const { user: currentUser } = useAuth()
+  const router = useRouter()
   const { rating, count } = getSellerRating(seller.id)
+
+  // State for report and delete
+  const [isReportOpen, setIsReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState("")
+
+  const isOwner = currentUser?.id === seller.id
+  const isAdmin = currentUser?.role === "admin"
+
+  const handleDelete = async () => {
+    if (!currentUser || (!isOwner && !isAdmin)) return
+
+    if (confirm("Are you sure you want to delete this service?")) {
+      const result = await deleteService(service.id, currentUser.id)
+      if (result.success) {
+        toast.success("Service deleted successfully")
+        router.refresh()
+      } else {
+        toast.error(result.error || "Failed to delete service")
+      }
+    }
+  }
+
+  const handleReport = () => {
+    toast.success("Report submitted. We'll review it shortly.")
+    setIsReportOpen(false)
+    setReportReason("")
+  }
 
   // Feed Carousel
   const [feedEmblaRef, feedEmblaApi] = useEmblaCarousel({ loop: true })
@@ -168,35 +200,37 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
         </Card>
       </DialogTrigger>
 
-      {/* Service Detail Modal */}
-      <DialogContent className="max-w-6xl p-0 overflow-hidden gap-0 max-h-[95vh] bg-background border-none shadow-2xl">
-        {/* Hidden title for screen readers */}
+      {/* Service Detail Modal - Premium Design */}
+      <DialogContent className="max-w-7xl h-[90vh] p-0 overflow-hidden gap-0 bg-background border-none shadow-2xl">
         <DialogTitle className="sr-only">{service.title}</DialogTitle>
 
-        <div className="grid md:grid-cols-[1.5fr_1fr] h-full max-h-[95vh]">
-          {/* Modal Carousel */}
-          <div className="relative bg-black aspect-square md:aspect-auto md:h-full overflow-hidden group/modal-carousel">
-            <div className="h-full w-full absolute inset-0 md:relative" ref={modalEmblaRef}>
+        <div className="grid md:grid-cols-[1.6fr_1fr] h-full">
+          {/* Left: Image Carousel */}
+          <div className="relative bg-gradient-to-br from-black via-gray-900 to-black overflow-hidden group/modal-carousel">
+            <div className="h-full w-full" ref={modalEmblaRef}>
               <div className="flex h-full w-full touch-pan-y">
                 {images.map((img, index) => (
-                  <div className="flex-[0_0_100%] min-w-0 relative h-full flex items-center justify-center bg-black/90" key={index}>
+                  <div className="flex-[0_0_100%] min-w-0 relative h-full flex items-center justify-center" key={index}>
                     <Image
                       src={img}
-                      alt={`${service.title} - Detail Image ${index + 1}`}
+                      alt={`${service.title} - Image ${index + 1}`}
                       fill
                       className="object-contain"
+                      sizes="(max-width: 768px) 100vw, 60vw"
                       priority={index === 0}
                     />
                   </div>
                 ))}
               </div>
             </div>
+
+            {/* Carousel Navigation */}
             {images.length > 1 && (
               <>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute left-4 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-black/20 text-white hover:bg-black/40 hover:text-white"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 hover:text-white border border-white/20 opacity-0 group-hover/modal-carousel:opacity-100 transition-all shadow-2xl"
                   onClick={(e) => handlePrev(e, modalEmblaApi)}
                 >
                   <ChevronLeft className="h-6 w-6" />
@@ -204,63 +238,163 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-4 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-black/20 text-white hover:bg-black/40 hover:text-white"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 hover:text-white border border-white/20 opacity-0 group-hover/modal-carousel:opacity-100 transition-all shadow-2xl"
                   onClick={(e) => handleNext(e, modalEmblaApi)}
                 >
                   <ChevronRight className="h-6 w-6" />
                 </Button>
+
+                {/* Dots */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                  {images.map((_, i) => (
+                    <button
+                      key={i}
+                      className="h-2 w-2 rounded-full bg-white/40 hover:bg-white/60 transition-all backdrop-blur-sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        modalEmblaApi?.scrollTo(i)
+                      }}
+                    />
+                  ))}
+                </div>
               </>
             )}
+
+            {/* Action Buttons Overlay */}
+            <div className="absolute top-6 right-6 z-20 flex gap-2">
+              {(isOwner || isAdmin) && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={handleDelete}
+                  title="Delete Service"
+                  className="h-10 w-10 rounded-full shadow-xl bg-red-500 hover:bg-red-600 border-2 border-white/20"
+                >
+                  <Trash className="h-5 w-5" />
+                </Button>
+              )}
+
+              {currentUser && !isOwner && (
+                <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Report Service"
+                      className="h-10 w-10 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 border-2 border-white/20 text-white shadow-xl"
+                    >
+                      <Flag className="h-5 w-5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Report Service</DialogTitle>
+                      <DialogDescription>Please describe why you are reporting this service.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <Label htmlFor="reason" className="mb-2 block">Reason</Label>
+                      <Textarea
+                        id="reason"
+                        placeholder="This service violates terms because..."
+                        value={reportReason}
+                        onChange={(e) => setReportReason(e.target.value)}
+                        rows={4}
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsReportOpen(false)}>Cancel</Button>
+                      <Button onClick={handleReport}>Submit Report</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
           </div>
 
-          {/* Modal Details */}
-          <div className="flex flex-col h-full bg-background overflow-hidden relative">
-            {/* Close button provided by DialogContent usually, but explicit one sometimes safer if customized */}
-
-            <div className="p-6 md:p-8 flex-1 overflow-y-auto">
+          {/* Right: Service Details */}
+          <div className="flex flex-col h-full overflow-hidden bg-background">
+            {/* Header Section */}
+            <div className="p-8 border-b border-border/50">
               <div className="flex items-start justify-between mb-4">
-                <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5">{service.category}</Badge>
-                <div className="text-2xl font-bold text-primary">${service.price}</div>
+                <div className="flex-1">
+                  <h2 className="text-4xl font-bold text-foreground mb-3 leading-tight">{service.title}</h2>
+                  <Badge variant="secondary" className="text-sm font-medium px-3 py-1">
+                    {service.category}
+                  </Badge>
+                </div>
+                <div className="text-right ml-4">
+                  <div className="text-5xl font-bold text-primary">${service.price}</div>
+                  <div className="text-sm text-muted-foreground mt-1">per session</div>
+                </div>
               </div>
 
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground leading-tight">{service.title}</h2>
+              {/* Seller Info */}
+              <div className="mt-6 p-4 rounded-xl bg-muted/30 border border-border/50">
+                <SellerInfo />
+              </div>
+            </div>
 
-              <SellerInfo className="mb-8 p-4 bg-muted/40 rounded-xl border border-border/50" />
-
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-8">
+              {/* Service Details */}
               <div className="space-y-6">
-                <div>
-                  <h4 className="text-sm font-semibold mb-2 text-foreground uppercase tracking-wider">About this Service</h4>
-                  <p className="text-sm md:text-base leading-relaxed text-muted-foreground whitespace-pre-wrap">{service.description}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-6 border-t border-border">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Duration</span>
-                    <div className="flex items-center gap-2 font-medium">
-                      <Clock className="h-4 w-4 text-primary" />
-                      <span>{service.duration} mins</span>
-                    </div>
+                <div className="flex items-center gap-6 text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-primary" />
+                    <span className="font-medium">{service.duration} minutes</span>
                   </div>
                   {seller.location && (
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs text-muted-foreground uppercase tracking-wider">Location</span>
-                      <div className="flex items-center gap-2 font-medium">
-                        <MapPin className="h-4 w-4 text-primary" />
-                        <span>{seller.location}</span>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5 text-primary" />
+                      <span className="font-medium">{seller.location}</span>
                     </div>
                   )}
+                </div>
+
+                {service.description && (
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <div className="h-1 w-1 rounded-full bg-primary"></div>
+                      About This Service
+                    </h3>
+                    <p className="text-base leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                      {service.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Additional Info Cards */}
+                <div className="grid grid-cols-2 gap-4 pt-4">
+                  <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="text-sm text-muted-foreground mb-1">Duration</div>
+                    <div className="text-2xl font-bold text-foreground">{service.duration}m</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="text-sm text-muted-foreground mb-1">Category</div>
+                    <div className="text-2xl font-bold text-foreground truncate">{service.category}</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 md:p-6 border-t border-border bg-muted/5 flex justify-between items-center gap-4">
-              <Button variant="outline" className="flex-1" asChild>
-                <Link href={`/profile/${seller.username || seller.id}`}>
-                  View Profile
-                </Link>
-              </Button>
-              <Button className="flex-[2] text-base font-semibold shadow-lg shadow-primary/20">Book Now</Button>
+            {/* Footer Actions */}
+            <div className="p-6 border-t border-border/50 bg-muted/20">
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12 text-base font-semibold"
+                  asChild
+                >
+                  <Link href={`/profile/${seller.username || seller.id}`}>
+                    View Profile
+                  </Link>
+                </Button>
+                <Button
+                  className="flex-1 h-12 text-base font-semibold shadow-lg bg-primary hover:bg-primary/90"
+                >
+                  Book Now
+                </Button>
+              </div>
             </div>
           </div>
         </div>
