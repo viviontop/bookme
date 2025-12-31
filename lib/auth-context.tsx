@@ -64,11 +64,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (data: RegisterData): Promise<{ success: boolean; error?: string }> => {
     const { email, password, role, firstName, lastName, birthDate, phone } = data
+    const fullName = `${firstName} ${lastName}`.trim()
     const { error, data: res } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { role, firstName, lastName, birthDate, phone },
+        data: { 
+          role, 
+          firstName, 
+          lastName, 
+          full_name: fullName, // Include full_name for database trigger
+          birthDate, 
+          phone 
+        },
       },
     })
     if (error) return { success: false, error: error.message || String(error) }
