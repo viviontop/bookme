@@ -63,8 +63,10 @@ export default function SearchPage() {
           s.title.toLowerCase().includes(query) ||
           s.description.toLowerCase().includes(query) ||
           s.category.toLowerCase().includes(query) ||
+          s.category.toLowerCase().includes(query) ||
           seller?.firstName.toLowerCase().includes(query) ||
           seller?.lastName.toLowerCase().includes(query) ||
+          seller?.username?.toLowerCase().includes(query) ||
           seller?.location?.toLowerCase().includes(query)
         )
       })

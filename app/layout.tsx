@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/auth-context"
 import { DataProvider } from "@/lib/data-context"
 import { MessagingProvider } from "@/lib/messaging-context"
 import { Navigation } from "@/components/navigation"
+import { UserSync } from "@/components/user-sync"
 import { ThemeProvider } from "next-themes"
 import "./globals.css"
 import "leaflet/dist/leaflet.css"
@@ -48,6 +49,7 @@ export default function RootLayout({
           <AuthProvider>
             <DataProvider>
               <MessagingProvider>
+                <UserSync />
                 <Navigation />
                 {children}
               </MessagingProvider>

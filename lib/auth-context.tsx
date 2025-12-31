@@ -15,6 +15,7 @@ interface AuthContextType {
 
 interface RegisterData {
   email: string
+  username: string
   password: string
   role: UserRole
   firstName: string
@@ -63,13 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const register = async (data: RegisterData): Promise<{ success: boolean; error?: string }> => {
-    const { email, password, role, firstName, lastName, birthDate, phone } = data
+    const { email, username, password, role, firstName, lastName, birthDate, phone } = data
     const fullName = `${firstName} ${lastName}`.trim()
     const { error, data: res } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
+          username,
           role,
           firstName,
           lastName,
@@ -107,6 +109,7 @@ function fromSupabaseUser(u: any): User {
   return {
     id: u.id,
     email: u.email ?? "",
+    username: u.user_metadata?.username ?? undefined,
     password: "", // never store password client-side
     role: (u.user_metadata?.role as UserRole) || "buyer",
     firstName: u.user_metadata?.firstName ?? "",

@@ -14,26 +14,82 @@ interface ServiceCardProps {
   seller: User
 }
 
+import useEmblaCarousel from "embla-carousel-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { Button } from "./ui/button"
+
 export function ServiceCard({ service, seller }: ServiceCardProps) {
   const { getSellerRating } = useData()
   const { rating, count } = getSellerRating(seller.id)
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true })
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    emblaApi?.scrollPrev()
+  }
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    emblaApi?.scrollNext()
+  }
+
+  const images = service.images.length > 0 ? service.images : ["/placeholder.svg?height=300&width=400&query=service"]
 
   return (
-    <Link href={`/profile/${seller.id}`}>
-      <Card className="group overflow-hidden transition-all hover:shadow-lg">
-        <div className="relative aspect-[4/3] overflow-hidden">
-          <Image
-            src={service.images[0] || "/placeholder.svg?height=300&width=400&query=service"}
-            alt={service.title}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-          <div className="absolute right-2 top-2">
-            <Badge variant="secondary" className="bg-card/90 backdrop-blur-sm">
-              ${service.price}
-            </Badge>
+    <Card className="group overflow-hidden transition-all hover:shadow-lg">
+      <div className="relative aspect-[4/3] overflow-hidden">
+        <div className="h-full w-full" ref={emblaRef}>
+          <div className="flex h-full w-full touch-pan-y">
+            {images.map((img, index) => (
+              <div className="flex-[0_0_100%] min-w-0 relative" key={index}>
+                <Link href={`/profile/${seller.id}`} className="block h-full w-full">
+                  <Image
+                    src={img}
+                    alt={`${service.title} - Image ${index + 1}`}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
+
+        {images.length > 1 && (
+          <>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute left-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full opacity-0 shadow-md transition-opacity group-hover:opacity-100 disabled:opacity-0"
+              onClick={handlePrev}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full opacity-0 shadow-md transition-opacity group-hover:opacity-100 disabled:opacity-0"
+              onClick={handleNext}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
+              {images.map((_, i) => (
+                <div key={i} className="h-1.5 w-1.5 rounded-full bg-white/50 backdrop-blur-sm" />
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="absolute right-2 top-2 pointer-events-none">
+          <Badge variant="secondary" className="bg-card/90 backdrop-blur-sm">
+            ${service.price}
+          </Badge>
+        </div>
+      </div>
+      <Link href={`/profile/${seller.id}`}>
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -89,7 +145,7 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
             </Badge>
           </div>
         </CardContent>
-      </Card>
-    </Link>
+      </Link>
+    </Card>
   )
 }

@@ -28,6 +28,7 @@ export default function RegisterPage() {
   const [role, setRole] = useState<UserRole | null>(null)
   const [formData, setFormData] = useState({
     email: "",
+    username: "",
     password: "",
     confirmPassword: "",
     firstName: "",
@@ -67,6 +68,7 @@ export default function RegisterPage() {
     setIsLoading(true)
     const result = await register({
       email: formData.email,
+      username: formData.username,
       password: formData.password,
       role,
       firstName: formData.firstName,
@@ -251,6 +253,17 @@ export default function RegisterPage() {
                     placeholder="you@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    placeholder="@username"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     required
                   />
                 </div>

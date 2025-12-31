@@ -3,7 +3,8 @@ export type UserRole = "buyer" | "seller" | "admin"
 export interface User {
   id: string
   email: string
-  password: string
+  username?: string
+  password?: string
   role: UserRole
   firstName: string
   lastName: string

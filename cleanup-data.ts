@@ -29,10 +29,7 @@ async function cleanup() {
     // 1. Delete data from Prisma (Public Table)
     try {
         console.log('Deleting Reviews...');
-        // Assuming Review model exists based on seed-data, verifying via schema later or just try/catch
-        // If Review model is not in schema.prisma viewed earlier, skip. 
-        // Viewed schema.prisma earlier: User, Service, Appointment. No Review model visible in that snippet.
-        // Wait, seed-data.ts showed Review type. Let's check schema again or just delete what we know.
+        // If Review model exists, we would delete it. Skipping for now as we focus on User/Service.
 
         console.log('Deleting Appointments...');
         await prisma.appointment.deleteMany({});

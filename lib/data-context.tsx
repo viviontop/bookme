@@ -25,6 +25,7 @@ interface DataContextType {
   getTotalSales: () => { total: number; platformFee: number; sellersEarnings: number }
   getUserStats: (userId: string) => { earnings: number; appointments: number; monthlyEarnings: Record<string, number> }
   clearAppointments: () => void
+  syncUser: (user: User) => void
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -189,7 +190,7 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
       (a) => a.sellerId === sellerId && (a.status === "confirmed" || a.status === "completed") && a.sellerEarnings
     )
     const total = paidAppointments.reduce((sum, a) => sum + (a.sellerEarnings || 0), 0)
-    
+
     const monthly: Record<string, number> = {}
     for (const a of paidAppointments) {
       if (a.paidAt) {
@@ -198,7 +199,7 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
         monthly[monthKey] = (monthly[monthKey] || 0) + (a.sellerEarnings || 0)
       }
     }
-    
+
     return { total, monthly }
   }
 
@@ -210,7 +211,7 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
     const total = paidAppointments.reduce((sum, a) => sum + (a.amount || 0), 0)
     const platformFee = paidAppointments.reduce((sum, a) => sum + (a.platformFee || 0), 0)
     const sellersEarnings = paidAppointments.reduce((sum, a) => sum + (a.sellerEarnings || 0), 0)
-    
+
     return { total, platformFee, sellersEarnings }
   }
 
@@ -219,14 +220,32 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
     if (user?.role !== "seller") {
       return { earnings: 0, appointments: 0, monthlyEarnings: {} }
     }
-    
+
     const earningsData = getSellerEarnings(userId)
     const userAppointments = appointments.filter((a) => a.sellerId === userId)
-    
+
     return {
       earnings: earningsData.total,
       appointments: userAppointments.length,
       monthlyEarnings: earningsData.monthly,
+    }
+  }
+
+  const syncUser = (user: User) => {
+    // Check if user already exists
+    const exists = users.find((u) => u.id === user.id)
+    if (!exists) {
+      const updated = [...users, user]
+      setUsers(updated)
+      localStorage.setItem("users", JSON.stringify(updated))
+    } else {
+      // Optional: Update existing user with fresh data from Auth
+      const updated = users.map((u) => (u.id === user.id ? { ...u, ...user } : u))
+      // Only update if actually changed (deep check omitted for speed, reliant on React diffing)
+      if (JSON.stringify(exists) !== JSON.stringify(user)) {
+        setUsers(updated)
+        localStorage.setItem("users", JSON.stringify(updated))
+      }
     }
   }
 
@@ -253,6 +272,7 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
       getTotalSales,
       getUserStats,
       clearAppointments,
+      syncUser,
     }),
     [services, availability, appointments, reviews, users]
   )
