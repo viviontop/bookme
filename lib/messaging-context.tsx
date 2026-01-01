@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useMemo, useRef, type ReactNode } from "react"
 import { useAuth } from "./auth-context"
 import type { Message, Conversation } from "./types"
 import {
@@ -26,26 +26,42 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
   const { user } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const prevUnreadCount = useRef(0)
+  const notificationSound = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    notificationSound.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3")
+  }, [])
 
   // Load data from DB
   useEffect(() => {
     if (!user?.id) return
 
     const loadData = async () => {
-      const dbConversations = await getConversationsDB(user.id)
-      setConversations(dbConversations as any)
+      try {
+        const dbConversations = await getConversationsDB(user.id)
 
-      // Load messages for currently active conversations if any
-      // In this app, messages are usually fetched per conversation
+        // Only update if something changed to reduce re-renders
+        const newUnreadCount = dbConversations.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0)
+
+        if (JSON.stringify(dbConversations) !== JSON.stringify(conversations)) {
+          setConversations(dbConversations as any)
+
+          // Play sound if unread count increased
+          if (newUnreadCount > prevUnreadCount.current) {
+            notificationSound.current?.play().catch(() => { })
+          }
+          prevUnreadCount.current = newUnreadCount
+        }
+      } catch (error) {
+        console.error("Failed to load conversations:", error)
+      }
     }
 
     loadData()
-
-    // Refresh periodically
-    const interval = setInterval(loadData, 5000)
-
+    const interval = setInterval(loadData, 4000)
     return () => clearInterval(interval)
-  }, [user?.id])
+  }, [user?.id, conversations])
 
   const sendMessage = async (receiverId: string, content: string, fileUrl?: string, fileType?: string) => {
     if (!user?.id) return
@@ -106,14 +122,21 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     if (!activeConversationId) return
 
     const loadMessages = async () => {
-      const dbMessages = await getMessagesDB(activeConversationId)
-      setMessages(dbMessages as any)
+      try {
+        const dbMessages = await getMessagesDB(activeConversationId)
+        // Only update if message count or last message ID changed
+        if (dbMessages.length !== messages.length || (dbMessages.length > 0 && messages.length > 0 && dbMessages[dbMessages.length - 1].id !== messages[messages.length - 1].id)) {
+          setMessages(dbMessages as any)
+        }
+      } catch (error) {
+        console.error("Failed to load messages:", error)
+      }
     }
 
     loadMessages()
-    const interval = setInterval(loadMessages, 3000)
+    const interval = setInterval(loadMessages, 2000) // Faster polling for active chat
     return () => clearInterval(interval)
-  }, [activeConversationId])
+  }, [activeConversationId, messages.length])
 
   // We need to expose a way to set the active conversation
   // But wait, getMessages is called by the component.

@@ -117,8 +117,8 @@ export function Navigation() {
                       <item.icon className="h-4 w-4" />
                       {item.label}
                       {item.href === "/chat" && unreadCount > 0 && (
-                        <Badge variant="default" className="ml-auto h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                          {unreadCount > 9 ? "9+" : unreadCount}
+                        <Badge variant="default" className="ml-auto h-5 min-w-[1.25rem] px-1 rounded-full flex items-center justify-center text-[10px] leading-none">
+                          {unreadCount > 99 ? "99+" : unreadCount}
                         </Badge>
                       )}
                       {item.href === "/appointments" && pendingPaymentCount > 0 && (
@@ -218,6 +218,14 @@ export function Navigation() {
               <Button variant={pathname === item.href ? "secondary" : "ghost"} size="sm" className="gap-2 relative">
                 <item.icon className="h-4 w-4" />
                 {item.label}
+                {item.href === "/chat" && unreadCount > 0 && (
+                  <Badge
+                    variant="default"
+                    className="h-4 min-w-[1rem] px-1 rounded-full flex items-center justify-center text-[10px] leading-none shrink-0"
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Badge>
+                )}
                 {item.href === "/appointments" && pendingPaymentCount > 0 && (
                   <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-blue-500 border-2 border-card" title={`${pendingPaymentCount} appointment(s) need payment`} />
                 )}
