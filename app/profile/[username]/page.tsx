@@ -286,17 +286,16 @@ export default function ProfilePage({ params }: { readonly params: Promise<{ use
                   Edit Profile
                 </Button>
               ) : (
-                (isSeller || isAdmin) && (
-                  <Button
-                    onClick={() => {
-                      // Start conversation and navigate to chat
-                      router.push(`/chat?userId=${profileUser.id}`)
-                    }}
-                  >
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    Message
-                  </Button>
-                )
+                <Button
+                  onClick={() => {
+                    // Start conversation and navigate to chat
+                    router.push(`/chat?userId=${profileUser.id}`)
+                  }}
+                  className="rounded-full px-6 font-bold shadow-lg transition-transform active:scale-95"
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Message
+                </Button>
               )}
             </div>
           </CardContent>

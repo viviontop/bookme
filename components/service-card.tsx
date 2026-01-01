@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogHeader, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Star, Clock, MapPin, Shield, X, ChevronLeft, ChevronRight, Trash, Flag, Calendar, Sparkles } from "lucide-react"
+import { Star, Clock, MapPin, Shield, X, ChevronLeft, ChevronRight, Trash, Flag, Calendar, Sparkles, MessageCircle } from "lucide-react"
 import useEmblaCarousel from "embla-carousel-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -373,6 +373,14 @@ export function ServiceCard({ service, seller }: ServiceCardProps) {
                 onClick={() => router.push(`/profile/${seller.username || seller.id}`)}
               >
                 View Profile
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 h-12 md:h-16 rounded-xl md:rounded-2xl border-2 text-base md:text-lg font-bold transition-all hover:bg-muted active:scale-95"
+                onClick={() => router.push(`/chat?userId=${seller.id}`)}
+              >
+                <MessageCircle className="mr-2 h-5 w-5 md:h-6 md:w-6 text-primary" />
+                Message
               </Button>
               <Button
                 className="flex-1 h-12 md:h-16 rounded-xl md:rounded-2xl text-base md:text-lg font-black shadow-[0_10px_30px_-10px_rgba(var(--primary),0.5)] transition-all hover:translate-y-[-2px] hover:shadow-[0_15px_35px_-10px_rgba(var(--primary),0.6)] active:scale-95"

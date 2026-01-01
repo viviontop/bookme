@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Search, SlidersHorizontal, X } from "lucide-react"
+import { Search, SlidersHorizontal, X, MessageCircle } from "lucide-react"
 
 const categories = ["All", "Beauty", "Photography", "Fitness", "Wellness"]
 const sortOptions = [
@@ -265,10 +265,21 @@ export default function SearchPage() {
                           </div>
                         )}
                       </div>
-                      <div className="min-w-0">
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{profile.firstName} {profile.lastName}</p>
                         <p className="text-sm text-muted-foreground truncate">@{profile.username}</p>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 rounded-full hover:bg-primary/10 hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          router.push(`/chat?userId=${profile.id}`)
+                        }}
+                      >
+                        <MessageCircle className="h-5 w-5" />
+                      </Button>
                     </div>
                   ))}
                 </div>
