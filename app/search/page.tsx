@@ -149,7 +149,7 @@ export default function SearchPage() {
         </div>
 
         {/* Filters Bar */}
-        <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="mb-6 flex overflow-x-auto no-scrollbar pb-2 items-center gap-3">
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Category" />

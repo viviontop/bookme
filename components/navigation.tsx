@@ -183,7 +183,7 @@ export function Navigation() {
                 </Link>
                 <Link href={`/profile/${user.username || user.id}`}>
                   <Button
-                    variant={pathname === `/profile/${user.username || user.id}` ? "secondary" : "ghost"}
+                    variant={pathname.startsWith(`/profile/${user.username || user.id}`) ? "secondary" : "ghost"}
                     className="w-full justify-start gap-2"
                   >
                     <User className="h-4 w-4" />
@@ -298,31 +298,10 @@ export function Navigation() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Mobile Menu Button */}
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+          {/* Mobile Menu Button - Using the Sheet already defined above */}
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      {mobileMenuOpen && (
-        <div className="border-t border-border bg-card p-4 md:hidden">
-          <div className="flex flex-col gap-2">
-            {navItems.map((item) => (
-              <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}>
-                <Button variant={pathname === item.href ? "secondary" : "ghost"} className="w-full justify-start gap-2 relative">
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                  {item.href === "/appointments" && pendingPaymentCount > 0 && (
-                    <div className="ml-auto h-2 w-2 rounded-full bg-blue-500" title={`${pendingPaymentCount} appointment(s) need payment`} />
-                  )}
-                </Button>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
     </nav>
   )
 }

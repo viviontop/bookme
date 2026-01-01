@@ -73,7 +73,7 @@ export default function MapPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Map */}
           <div className="lg:col-span-2">
-            <Card className="h-[600px] overflow-hidden border border-border/60 bg-card shadow-sm">
+            <Card className="h-[40vh] md:h-[600px] overflow-hidden border border-border/60 bg-card shadow-sm">
               <CardContent className="p-0 h-full relative">
                 <MapComponent
                   services={servicesWithCoords}
@@ -104,11 +104,10 @@ export default function MapPage() {
                         <button
                           key={service.id}
                           onClick={() => setSelectedServiceId(service.id)}
-                          className={`w-full text-left p-3 rounded-lg border transition-all duration-300 ${
-                            selectedServiceId === service.id
+                          className={`w-full text-left p-3 rounded-lg border transition-all duration-300 ${selectedServiceId === service.id
                               ? "border-primary/40 bg-primary/5 shadow-md"
                               : "border-border/40 bg-card/50 hover:bg-accent/50 hover:border-border/60 hover:shadow-sm"
-                          }`}
+                            }`}
                         >
                           <div className="flex items-start gap-3">
                             <Avatar className="h-10 w-10 shrink-0">
@@ -196,7 +195,7 @@ export default function MapPage() {
                     </div>
                   </div>
                   <div className="flex gap-2 pt-2">
-                    <Link href={`/profile/${selectedSeller.id}`} className="flex-1">
+                    <Link href={`/profile/${selectedSeller.username || selectedSeller.id}`} className="flex-1">
                       <Button
                         variant="outline"
                         className="w-full"
@@ -204,7 +203,7 @@ export default function MapPage() {
                         View Profile
                       </Button>
                     </Link>
-                    <Link href={`/profile/${selectedSeller.id}`} className="flex-1">
+                    <Link href={`/profile/${selectedSeller.username || selectedSeller.id}`} className="flex-1">
                       <Button className="w-full">
                         Book Now
                       </Button>

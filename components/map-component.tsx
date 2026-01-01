@@ -299,7 +299,7 @@ const DynamicMapContainer = dynamic(
                             <span className="text-muted-foreground">{service.seller.location}</span>
                           )}
                         </div>
-                        <Link href={`/profile/${service.sellerId}`}>
+                        <Link href={`/profile/${service.seller?.username || service.sellerId}`}>
                           <Button
                             size="sm"
                             variant="outline"

@@ -141,7 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         username,
         firstName,
-        lastName
+        lastName,
+        role
       })
 
       if (!dbResult.success) {

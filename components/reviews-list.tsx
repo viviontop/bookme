@@ -30,7 +30,7 @@ export function ReviewsList({ reviews, users }: ReviewsListProps) {
             className="transition-all hover:shadow-md cursor-pointer"
           >
             <CardContent className="p-4">
-              <Link href={reviewer ? `/profile/${reviewer.id}` : "#"}>
+              <Link href={reviewer ? `/profile/${reviewer.username || reviewer.id}` : "#"}>
                 <div className="flex items-start gap-3">
                   <Avatar className="h-12 w-12 border-2 border-border">
                     <AvatarImage src={reviewer?.avatar || "/placeholder.svg"} alt={reviewer?.firstName || "User"} />

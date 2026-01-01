@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { MessageCircle, Send, Search } from "lucide-react"
+import { MessageCircle, Send, Search, ChevronLeft } from "lucide-react"
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 function ChatWithParams() {
   const { user } = useAuth()
@@ -22,6 +23,7 @@ function ChatWithParams() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [messageInput, setMessageInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
+  const [showChatOnMobile, setShowChatOnMobile] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Check for userId in URL params
@@ -29,13 +31,14 @@ function ChatWithParams() {
     const userId = searchParams.get("userId")
     if (userId && users.some((u) => u.id === userId)) {
       setSelectedUserId(userId)
+      setShowChatOnMobile(true)
       // Clean up URL
       router.replace("/chat", { scroll: false })
     }
   }, [searchParams, users, router])
 
   const conversationIdRef = useRef<string | null>(null)
-  
+
   const conversationId = useMemo(() => {
     if (!selectedUserId || !user?.id) return null
     return [user.id, selectedUserId].sort((a, b) => a.localeCompare(b)).join("-")
@@ -110,9 +113,12 @@ function ChatWithParams() {
   const unreadCount = getUnreadCount()
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-background">
+    <div className="flex h-[calc(100vh-4rem)] bg-background relative overflow-hidden">
       {/* Conversations List */}
-      <div className="w-full border-r border-border md:w-80">
+      <div className={cn(
+        "w-full border-r border-border md:w-80 flex-col h-full",
+        showChatOnMobile ? "hidden md:flex" : "flex"
+      )}>
         <div className="flex h-16 items-center border-b border-border px-4">
           <h2 className="text-lg font-semibold">Messages</h2>
           {unreadCount > 0 && (
@@ -149,10 +155,12 @@ function ChatWithParams() {
                 return (
                   <button
                     key={conversation.id}
-                    onClick={() => setSelectedUserId(otherUser.id)}
-                    className={`w-full p-4 text-left transition-colors hover:bg-muted ${
-                      selectedUserId === otherUser.id ? "bg-muted" : ""
-                    }`}
+                    onClick={() => {
+                      setSelectedUserId(otherUser.id)
+                      setShowChatOnMobile(true)
+                    }}
+                    className={`w-full p-4 text-left transition-colors hover:bg-muted ${selectedUserId === otherUser.id ? "bg-muted" : ""
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12">
@@ -194,11 +202,22 @@ function ChatWithParams() {
       </div>
 
       {/* Chat Window */}
-      <div className="flex-1 flex flex-col">
+      <div className={cn(
+        "flex-1 flex flex-col h-full bg-background",
+        !showChatOnMobile ? "hidden md:flex" : "flex"
+      )}>
         {selectedUser ? (
           <>
-            <div className="flex h-16 items-center border-b border-border px-4">
-              <Link href={`/profile/${selectedUser.id}`} className="flex items-center gap-3 flex-1">
+            <div className="flex h-16 items-center border-b border-border px-4 gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                onClick={() => setShowChatOnMobile(false)}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <Link href={`/profile/${selectedUser.username || selectedUser.id}`} className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={selectedUser.avatar || "/placeholder.svg"} alt={selectedUser.firstName} />
                   <AvatarFallback className="bg-primary text-primary-foreground">

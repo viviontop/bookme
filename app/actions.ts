@@ -146,6 +146,7 @@ export async function registerUserDB(data: {
     username: string
     firstName: string
     lastName: string
+    role?: string
 }) {
     console.log("Registering user in DB:", data) // Audit log
     try {
@@ -160,12 +161,14 @@ export async function registerUserDB(data: {
                 email: data.email,
                 username: data.username,
                 name: `${data.firstName} ${data.lastName}`,
+                role: data.role,
             },
             create: {
                 id: data.id,
                 email: data.email,
                 username: data.username,
                 name: `${data.firstName} ${data.lastName}`,
+                role: data.role || "buyer",
             },
         })
         console.log("User registered in DB successfully:", user.id)
