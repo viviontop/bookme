@@ -45,6 +45,7 @@ interface DataContextType {
   syncUser: (user: User) => void
   fetchNotifications: () => Promise<void>
   markNotificationAsRead: (id: string) => Promise<void>
+  fetchSellerAvailability: (sellerId: string) => Promise<void>
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -173,6 +174,14 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
     }
   }
 
+  const fetchSellerAvailability = async (sellerId: string) => {
+    const dbAvail = await getAvailability(sellerId)
+    setAvailabilityState(prev => {
+      const others = prev.filter(a => a.sellerId !== sellerId)
+      return [...others, ...(dbAvail as any)]
+    })
+  }
+
   const addReview = (review: Omit<Review, "id" | "createdAt">) => {
     const newReview = { ...review, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
     const updated = [...reviews, newReview]
@@ -292,6 +301,7 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
       syncUser,
       fetchNotifications,
       markNotificationAsRead,
+      fetchSellerAvailability,
     }),
     [services, availability, appointments, reviews, users, notifications]
   )

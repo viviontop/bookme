@@ -129,28 +129,41 @@ export async function createService(data: any) {
         if (!data.sellerId) {
             return { success: false, error: "Authentication required (missing sellerId)" }
         }
+        if (!data.title) {
+            return { success: false, error: "Title is required" }
+        }
+        if (isNaN(parseFloat(data.price))) {
+            return { success: false, error: "Invalid price format" }
+        }
 
         // Ensure images is an array of strings
         const images = Array.isArray(data.images) ? data.images : []
 
-        const service = await prisma.service.create({
+        const service = await (prisma as any).service.create({
             data: {
                 title: data.title,
-                description: data.description,
-                price: parseFloat(data.price), // Ensure number
-                duration: parseInt(data.duration), // Ensure number
+                description: data.description || "",
+                price: parseFloat(data.price),
+                duration: parseInt(data.duration) || 60,
                 category: data.category || "General",
                 images: images,
                 isActive: data.isActive ?? true,
                 sellerId: data.sellerId,
             }
         })
-        revalidatePath("/")
-        revalidatePath("/feed")
+
+        try {
+            revalidatePath("/")
+            revalidatePath("/feed")
+            revalidatePath(`/${data.username || ''}`)
+        } catch (revalidateError) {
+            console.warn("Revalidation failed:", revalidateError)
+        }
+
         return { success: true, service }
     } catch (error) {
-        console.error("Error creating service:", error)
-        return { success: false, error: String(error) }
+        console.error("CRITICAL: Error creating service:", error)
+        return { success: false, error: `Database error: ${error instanceof Error ? error.message : String(error)}` }
     }
 }
 

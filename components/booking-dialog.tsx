@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useData } from "@/lib/data-context"
@@ -43,8 +43,14 @@ interface BookingDialogProps {
 
 export function BookingDialog({ open, onOpenChange, service, seller }: BookingDialogProps) {
   const { user } = useAuth()
-  const { createAppointment, appointments } = useData()
+  const { createAppointment, appointments, fetchSellerAvailability } = useData()
   const router = useRouter()
+
+  useEffect(() => {
+    if (open && seller?.id) {
+      fetchSellerAvailability(seller.id)
+    }
+  }, [open, seller?.id, fetchSellerAvailability])
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
@@ -90,11 +96,18 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
   const { availability } = useData()
   const sellerAvail = availability.filter(a => a.sellerId === seller.id)
 
+  // If seller has no availability settings at all, use a default schedule for now
+  const hasDefinedSchedule = sellerAvail.length > 0
+
   const currentDayAvail = selectedDate
     ? sellerAvail.find(a => a.dayOfWeek === selectedDate.getDay() && a.isActive)
     : null
 
   const filteredTimeSlots = timeSlots.filter(slot => {
+    // If they have no schedule, default to 09:00 - 17:00 for demo purposes
+    if (!hasDefinedSchedule) {
+      return slot >= "09:00" && slot <= "17:00" && selectedDate?.getDay() !== 0
+    }
     if (!currentDayAvail) return false
     return slot >= currentDayAvail.startTime && slot <= currentDayAvail.endTime
   })
@@ -171,11 +184,12 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
             selected={selectedDate}
             onSelect={setSelectedDate}
             disabled={(date) => {
+              if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true
+              if (!hasDefinedSchedule) return date.getDay() === 0 // Default: No Sundays
               const day = date.getDay()
-              const hasAvail = sellerAvail.some(a => a.dayOfWeek === day && a.isActive)
-              return date < new Date() || !hasAvail
+              return !sellerAvail.some(a => a.dayOfWeek === day && a.isActive)
             }}
-            className="rounded-md border"
+            className="rounded-md border shadow-sm"
           />
         </div>
 
