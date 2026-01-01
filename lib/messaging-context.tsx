@@ -3,6 +3,12 @@
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react"
 import { useAuth } from "./auth-context"
 import type { Message, Conversation } from "./types"
+import {
+  sendMessage as sendMessageDB,
+  getConversations as getConversationsDB,
+  getMessages as getMessagesDB,
+  markAsRead as markAsReadDB
+} from "@/app/actions"
 
 interface MessagingContextType {
   messages: Message[]
@@ -21,119 +27,56 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
   const [messages, setMessages] = useState<Message[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([])
 
-  // Load data from localStorage
+  // Load data from DB
   useEffect(() => {
-    const loadData = () => {
-      const storedMessages = localStorage.getItem("messages")
-      const storedConversations = localStorage.getItem("conversations")
-      
-      if (storedMessages) {
-        try {
-          const parsedMessages = JSON.parse(storedMessages)
-          setMessages(parsedMessages)
-        } catch {
-          setMessages([])
-        }
-      }
-      
-      if (storedConversations) {
-        try {
-          const parsedConversations = JSON.parse(storedConversations)
-          setConversations(parsedConversations)
-        } catch {
-          setConversations([])
-        }
-      }
-    }
-    
-    loadData()
-    
-    // Refresh data when window gains focus (so users see new messages)
-    const handleFocus = () => {
-      loadData()
-    }
-    
-    // Also refresh periodically to catch new messages
-    const interval = setInterval(loadData, 2000)
-    
-    window.addEventListener("focus", handleFocus)
-    
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener("focus", handleFocus)
-    }
-  }, [])
-
-  // Save messages to localStorage whenever they change
-  useEffect(() => {
-    if (messages.length > 0 || localStorage.getItem("messages")) {
-      localStorage.setItem("messages", JSON.stringify(messages))
-    }
-  }, [messages])
-
-  // Save conversations to localStorage whenever they change
-  useEffect(() => {
-    if (conversations.length > 0 || localStorage.getItem("conversations")) {
-      localStorage.setItem("conversations", JSON.stringify(conversations))
-    }
-  }, [conversations])
-
-  const sendMessage = (receiverId: string, content: string) => {
     if (!user?.id) return
 
-    const conversationId = [user.id, receiverId].sort((a, b) => a.localeCompare(b)).join("-")
-    const newMessage: Message = {
-      id: crypto.randomUUID(),
-      conversationId,
-      senderId: user.id,
-      receiverId,
-      content,
-      createdAt: new Date().toISOString(),
-      read: false,
+    const loadData = async () => {
+      const dbConversations = await getConversationsDB(user.id)
+      setConversations(dbConversations as any)
+
+      // Load messages for currently active conversations if any
+      // In this app, messages are usually fetched per conversation
     }
 
-    // Use functional updates to ensure we have the latest state
-    setMessages((prevMessages) => {
-      const updatedMessages = [...prevMessages, newMessage]
-      // Save immediately
-      localStorage.setItem("messages", JSON.stringify(updatedMessages))
-      return updatedMessages
-    })
+    loadData()
 
-    // Update or create conversation for BOTH users
-    setConversations((prevConversations) => {
-      const existingConv = prevConversations.find((c) => c.id === conversationId)
-      
-      if (existingConv) {
-        // Update existing conversation
-        const updated = prevConversations.map((c) => {
-          if (c.id === conversationId) {
-            // Increment unread count for the receiver (not the sender)
-            return {
-              ...c,
-              lastMessage: newMessage,
-              lastMessageAt: newMessage.createdAt,
-              unreadCount: user.id === receiverId ? 0 : (c.unreadCount || 0) + 1,
-            }
-          }
-          return c
-        })
-        localStorage.setItem("conversations", JSON.stringify(updated))
-        return updated
-      } else {
-        // Create new conversation - both participants should see it
-        const newConversation: Conversation = {
-          id: conversationId,
-          participantIds: [user.id, receiverId].sort((a, b) => a.localeCompare(b)),
-          lastMessage: newMessage,
-          lastMessageAt: newMessage.createdAt,
-          unreadCount: 1, // Receiver has 1 unread message
+    // Refresh periodically
+    const interval = setInterval(loadData, 5000)
+
+    return () => clearInterval(interval)
+  }, [user?.id])
+
+  const sendMessage = async (receiverId: string, content: string) => {
+    if (!user?.id) return
+
+    const result = await sendMessageDB(user.id, receiverId, content)
+
+    if (result.success && result.message) {
+      const newMessage = result.message as unknown as Message
+      setMessages((prev) => [...prev, newMessage])
+
+      // Update local conversations state
+      const conversationId = newMessage.conversationId
+      setConversations((prev) => {
+        const existing = prev.find(c => c.id === conversationId)
+        if (existing) {
+          return prev.map(c => c.id === conversationId ? {
+            ...c,
+            lastMessage: newMessage,
+            lastMessageAt: newMessage.createdAt,
+          } : c)
+        } else {
+          return [...prev, {
+            id: conversationId,
+            participantIds: [user.id, receiverId].sort(),
+            lastMessage: newMessage,
+            lastMessageAt: newMessage.createdAt,
+            unreadCount: 0
+          }]
         }
-        const updated = [...prevConversations, newConversation]
-        localStorage.setItem("conversations", JSON.stringify(updated))
-        return updated
-      }
-    })
+      })
+    }
   }
 
   const getConversation = (userId: string) => {
@@ -144,25 +87,58 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
   }
 
   const getMessages = (conversationId: string) => {
+    // Fetch messages from DB if not already loaded for this conversation
+    // This is a bit tricky with the current state-based approach
+    // We'll update the effect to fetch messages when a conversation is active
     return messages
       .filter((m) => m.conversationId === conversationId)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
   }
 
-  const markAsRead = (conversationId: string) => {
+  // Effect to fetch messages when messages array is requested for a specific conversation
+  // Or simpler: just fetch messages for all conversations periodically? 
+  // No, let's fetch messages for the current view.
+  // The ChatContent component calls getMessages(conversationId)
+
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!activeConversationId) return
+
+    const loadMessages = async () => {
+      const dbMessages = await getMessagesDB(activeConversationId)
+      setMessages(dbMessages as any)
+    }
+
+    loadMessages()
+    const interval = setInterval(loadMessages, 3000)
+    return () => clearInterval(interval)
+  }, [activeConversationId])
+
+  // We need to expose a way to set the active conversation
+  // But wait, getMessages is called by the component.
+  // Let's modify getMessages to also trigger a sync.
+
+  const getMessagesWithSync = (conversationId: string) => {
+    if (activeConversationId !== conversationId) {
+      setActiveConversationId(conversationId)
+    }
+    return getMessages(conversationId)
+  }
+
+  const markAsRead = async (conversationId: string) => {
     if (!user?.id) return
 
-    // Mark messages as read for the current user
-    const updatedMessages = messages.map((m) =>
-      m.conversationId === conversationId && m.receiverId === user.id ? { ...m, read: true } : m
-    )
-    setMessages(updatedMessages)
+    await markAsReadDB(conversationId, user.id)
 
-    // Reset unread count for this conversation
-    const updated = conversations.map((c) =>
+    // Update local state
+    setMessages((prev) => prev.map((m) =>
+      m.conversationId === conversationId && m.receiverId === user.id ? { ...m, read: true } : m
+    ))
+
+    setConversations((prev) => prev.map((c) =>
       c.id === conversationId ? { ...c, unreadCount: 0 } : c
-    )
-    setConversations(updated)
+    ))
   }
 
   const getUnreadCount = () => {
@@ -179,11 +155,11 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
       conversations,
       sendMessage,
       getConversation,
-      getMessages,
+      getMessages: getMessagesWithSync,
       markAsRead,
       getUnreadCount,
     }),
-    [messages, conversations, user?.id]
+    [messages, conversations, user?.id, activeConversationId]
   )
 
   return <MessagingContext.Provider value={value}>{children}</MessagingContext.Provider>

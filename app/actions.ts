@@ -290,3 +290,131 @@ export async function updateUser(userId: string, data: any) {
         return { success: false, error: String(error) }
     }
 }
+
+export async function sendMessage(senderId: string, receiverId: string, content: string) {
+    try {
+        // Find or create conversation
+        const conversationId = [senderId, receiverId].sort().join("-")
+
+        const conversation = await prisma.conversation.upsert({
+            where: { id: conversationId },
+            update: {
+                lastMessageAt: new Date()
+            },
+            create: {
+                id: conversationId,
+                participantIds: [senderId, receiverId],
+                participants: {
+                    connect: [{ id: senderId }, { id: receiverId }]
+                }
+            }
+        })
+
+        const message = await prisma.message.create({
+            data: {
+                conversationId: conversation.id,
+                senderId,
+                receiverId,
+                content,
+                read: false
+            }
+        })
+
+        return {
+            success: true, message: {
+                ...message,
+                createdAt: message.createdAt.toISOString()
+            }
+        }
+    } catch (error) {
+        console.error("Error sending message:", error)
+        return { success: false, error: String(error) }
+    }
+}
+
+export async function getConversations(userId: string) {
+    try {
+        const conversations = await prisma.conversation.findMany({
+            where: {
+                participantIds: {
+                    has: userId
+                }
+            },
+            include: {
+                messages: {
+                    orderBy: {
+                        createdAt: "desc"
+                    },
+                    take: 1
+                }
+            },
+            orderBy: {
+                lastMessageAt: "desc"
+            }
+        })
+
+        return await Promise.all(conversations.map(async (c) => {
+            const unreadCount = await prisma.message.count({
+                where: {
+                    conversationId: c.id,
+                    receiverId: userId,
+                    read: false
+                }
+            })
+
+            return {
+                id: c.id,
+                participantIds: c.participantIds,
+                lastMessage: c.messages[0] ? {
+                    id: c.messages[0].id,
+                    content: c.messages[0].content,
+                    createdAt: c.messages[0].createdAt.toISOString(),
+                    senderId: c.messages[0].senderId,
+                    receiverId: c.messages[0].receiverId,
+                    read: c.messages[0].read
+                } : undefined,
+                lastMessageAt: c.lastMessageAt.toISOString(),
+                unreadCount
+            }
+        }))
+    } catch (error) {
+        console.error("Error getting conversations:", error)
+        return []
+    }
+}
+
+export async function getMessages(conversationId: string) {
+    try {
+        const messages = await prisma.message.findMany({
+            where: { conversationId },
+            orderBy: { createdAt: "asc" }
+        })
+
+        return messages.map(m => ({
+            ...m,
+            createdAt: m.createdAt.toISOString()
+        }))
+    } catch (error) {
+        console.error("Error getting messages:", error)
+        return []
+    }
+}
+
+export async function markAsRead(conversationId: string, userId: string) {
+    try {
+        await prisma.message.updateMany({
+            where: {
+                conversationId,
+                receiverId: userId,
+                read: false
+            },
+            data: {
+                read: true
+            }
+        })
+        return { success: true }
+    } catch (error) {
+        console.error("Error marking as read:", error)
+        return { success: false, error: String(error) }
+    }
+}
