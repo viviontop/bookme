@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react"
+import { createContext, useContext, useState, useEffect, ReactNode, useRef, useMemo, useCallback } from "react"
 import { useAuth } from "./auth-context"
 import { Message, Conversation, SocialStats, SocialRelation } from "./types"
 import {
@@ -14,7 +14,8 @@ import {
   blockUser,
   unblockUser,
   updateUser as updateUserDB,
-  updateConversationStatus
+  updateConversationStatus,
+  getSocialStats as getSocialStatsDB
 } from "@/app/actions"
 
 interface MessagingContextType {
@@ -67,6 +68,7 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     if (!user?.id) return
 
     const loadData = async () => {
+      // Don't poll if page is hidden to save resources
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
 
       try {
@@ -110,7 +112,7 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
           })
         }
       } catch (error) {
-        console.error("Failed to load data:", error)
+        console.error("Failed to load messaging data:", error)
       }
     }
 
@@ -127,26 +129,26 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     }
 
     const loadMessages = async () => {
+      // Don't poll if page is hidden
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
 
       try {
         const dbMessages = await getMessagesDB(activeConversationId)
         if (!Array.isArray(dbMessages)) return
 
-        // Filter out pending messages that might have been confirmed by polling
-        const hasNewMessages = dbMessages.length !== messages.filter(m => m.status !== 'pending').length ||
-          (dbMessages.length > 0 && messages.length > 0 &&
-            dbMessages[dbMessages.length - 1].id !== messages[messages.length - 1].id)
+        setMessages((prev) => {
+          // Use refs/state outside to compare messages
+          const existingNonPending = prev.filter(m => m.status !== 'pending')
+          const hasChanges = dbMessages.length !== existingNonPending.length ||
+            (dbMessages.length > 0 && existingNonPending.length > 0 &&
+              dbMessages[dbMessages.length - 1].id !== existingNonPending[existingNonPending.length - 1].id)
 
-        if (hasNewMessages) {
-          // If we had pending messages, we want to keep them if they aren't in dbMessages yet
-          setMessages((prev) => {
-            const pending = prev.filter(m => m.status === 'pending')
-            // Only keep pending that aren't somehow already in dbMessages (rare)
-            const uniquePending = pending.filter(pm => !dbMessages.some(dm => dm.content === pm.content && dm.createdAt === pm.createdAt))
-            return [...dbMessages as any, ...uniquePending]
-          })
-        }
+          if (!hasChanges) return prev
+
+          const pending = prev.filter(m => m.status === 'pending')
+          const uniquePending = pending.filter(pm => !dbMessages.some(dm => dm.content === pm.content && dm.createdAt === pm.createdAt))
+          return [...dbMessages as any, ...uniquePending]
+        })
       } catch (error) {
         console.error("Failed to load messages:", error)
       }
@@ -155,12 +157,11 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     loadMessages()
     const interval = setInterval(loadMessages, 3000)
     return () => clearInterval(interval)
-  }, [activeConversationId, messages.length])
+  }, [activeConversationId]) // REMOVED messages.length
 
-  const sendMessage = async (receiverId: string, content: string, fileUrl?: string, fileType?: string) => {
+  const sendMessage = useCallback(async (receiverId: string, content: string, fileUrl?: string, fileType?: string) => {
     if (!user?.id) return { success: false, error: "Not authenticated" }
 
-    // Optimistic Update
     const tempId = `temp-${Date.now()}`
     const optimisticMessage: Message = {
       id: tempId,
@@ -177,24 +178,20 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
 
     setMessages((prev) => [...prev, optimisticMessage])
 
-    // Trigger server call
     try {
       const result = await sendMessageDB(user.id, receiverId, content, fileUrl, fileType)
 
       if (result.success && result.message) {
-        // Replace optimistic message with real message
         setMessages((prev) =>
           prev.map((m) => m.id === tempId ? { ...result.message, status: "sent" } as any : m)
         )
 
-        // Refresh conversations to update last message
         const dbConversations = await getConversationsDB(user.id)
         if (Array.isArray(dbConversations)) {
           setConversations(dbConversations as any)
         }
         return result as any
       } else {
-        // Mark as error
         setMessages((prev) =>
           prev.map((m) => m.id === tempId ? { ...m, status: "error" } : m)
         )
@@ -206,76 +203,99 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
       )
       return { success: false, error: "Network error" }
     }
-  }
+  }, [user?.id, activeConversationId])
 
-  const follow = async (userId: string) => {
+  const follow = useCallback(async (userId: string) => {
     if (!user?.id) return
-    const result = await followUser(user.id, userId)
-    if (result.success) {
-      setFollows(prev => ({ ...prev, following: [...prev.following, userId] }))
+    console.log("Following user:", userId)
+    try {
+      const result = await followUser(user.id, userId)
+      if (result.success) {
+        setFollows(prev => ({ ...prev, following: [...prev.following, userId] }))
+      } else {
+        console.error("Follow failed:", result.error)
+      }
+    } catch (err) {
+      console.error("Follow exception:", err)
     }
-  }
+  }, [user?.id])
 
-  const unfollow = async (userId: string) => {
+  const unfollow = useCallback(async (userId: string) => {
     if (!user?.id) return
-    const result = await unfollowUser(user.id, userId)
-    if (result.success) {
-      setFollows(prev => ({ ...prev, following: prev.following.filter(id => id !== userId) }))
+    console.log("Unfollowing user:", userId)
+    try {
+      const result = await unfollowUser(user.id, userId)
+      if (result.success) {
+        setFollows(prev => ({ ...prev, following: prev.following.filter(id => id !== userId) }))
+      } else {
+        console.error("Unfollow failed:", result.error)
+      }
+    } catch (err) {
+      console.error("Unfollow exception:", err)
     }
-  }
+  }, [user?.id])
 
-  const block = async (userId: string) => {
+  const block = useCallback(async (userId: string) => {
     if (!user?.id) return
-    const result = await blockUser(user.id, userId)
-    if (result.success) {
-      setBlocks(prev => ({ ...prev, blocking: [...prev.blocking, userId] }))
-      setFollows(prev => ({
-        following: prev.following.filter(id => id !== userId),
-        followers: prev.followers.filter(id => id !== userId)
-      }))
+    try {
+      const result = await blockUser(user.id, userId)
+      if (result.success) {
+        setBlocks(prev => ({ ...prev, blocking: [...prev.blocking, userId] }))
+        setFollows(prev => ({
+          following: prev.following.filter(id => id !== userId),
+          followers: prev.followers.filter(id => id !== userId)
+        }))
+      }
+    } catch (err) {
+      console.error("Block exception:", err)
     }
-  }
+  }, [user?.id])
 
-  const unblock = async (userId: string) => {
+  const unblock = useCallback(async (userId: string) => {
     if (!user?.id) return
-    const result = await unblockUser(user.id, userId)
-    if (result.success) {
-      setBlocks(prev => ({ ...prev, blocking: prev.blocking.filter(id => id !== userId) }))
+    try {
+      const result = await unblockUser(user.id, userId)
+      if (result.success) {
+        setBlocks(prev => ({ ...prev, blocking: prev.blocking.filter(id => id !== userId) }))
+      }
+    } catch (err) {
+      console.error("Unblock exception:", err)
     }
-  }
+  }, [user?.id])
 
-  const getConversation = (userId: string) => {
+  const getConversation = useCallback((userId: string) => {
     return conversations.find(c => c.participantIds.includes(userId)) || null
-  }
+  }, [conversations])
 
-  const getMessages = (conversationId: string) => {
+  const getMessagesFunc = useCallback((conversationId: string) => {
     return messages.filter(m => m.conversationId === conversationId)
-  }
+  }, [messages])
 
-  const markAsRead = async (conversationId: string) => {
+  const markAsReadFunc = useCallback(async (conversationId: string) => {
     if (!user?.id) return
     await markAsReadDB(conversationId, user.id)
     setConversations((prev) =>
       prev.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c))
     )
-  }
+  }, [user?.id])
 
-  const getUnreadCount = () => {
+  const getUnreadCount = useCallback(() => {
     return conversations.reduce((total, c) => total + (c.unreadCount || 0), 0)
-  }
+  }, [conversations])
 
-  const isFollowing = (userId: string) => follows.following.includes(userId)
-  const isBlocking = (userId: string) => blocks.blocking.includes(userId)
-  const isBlockedBy = (userId: string) => blocks.blockedBy.includes(userId)
+  const isFollowing = useCallback((userId: string) => follows.following.includes(userId), [follows.following])
+  const isBlocking = useCallback((userId: string) => blocks.blocking.includes(userId), [blocks.blocking])
+  const isBlockedBy = useCallback((userId: string) => blocks.blockedBy.includes(userId), [blocks.blockedBy])
 
-  const getSocialStats = (userId: string): SocialStats => {
+  const getSocialStats = useCallback((userId: string): SocialStats => {
     if (userId === user?.id) {
       return { followers: follows.followers.length, following: follows.following.length }
     }
+    // Note: for other users, ProfilePage calls the server action directly
     return { followers: 0, following: 0 }
-  }
+  }, [user?.id, follows])
 
-  const acceptRequest = async (conversationId: string) => {
+  const acceptRequest = useCallback(async (conversationId: string) => {
     await updateConversationStatus(conversationId, "active")
     if (user?.id) {
       const dbConversations = await getConversationsDB(user.id)
@@ -283,23 +303,23 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
         setConversations(dbConversations as any)
       }
     }
-  }
+  }, [user?.id])
 
-  const updatePrivacy = async (acceptOnlyFromFollowed: boolean) => {
+  const updatePrivacy = useCallback(async (acceptOnlyFromFollowed: boolean) => {
     if (!user?.id) return
     await updateUserDB(user.id, { acceptOnlyFromFollowed })
     updateAuthUser({ ...user, acceptOnlyFromFollowed })
-  }
+  }, [user, updateAuthUser])
 
-  const setActiveConversation = (id: string | null) => setActiveConversationId(id)
+  const setActiveConversation = useCallback((id: string | null) => setActiveConversationId(id), [])
 
-  const value = {
+  const contextValue = useMemo(() => ({
     messages,
     conversations,
     sendMessage,
     getConversation,
-    getMessages,
-    markAsRead,
+    getMessages: getMessagesFunc,
+    markAsRead: markAsReadFunc,
     getUnreadCount,
     follow,
     unfollow,
@@ -312,9 +332,28 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     acceptRequest,
     updatePrivacy,
     setActiveConversation
-  }
+  }), [
+    messages,
+    conversations,
+    sendMessage,
+    getConversation,
+    getMessagesFunc,
+    markAsReadFunc,
+    getUnreadCount,
+    follow,
+    unfollow,
+    block,
+    unblock,
+    isFollowing,
+    isBlocking,
+    isBlockedBy,
+    getSocialStats,
+    acceptRequest,
+    updatePrivacy,
+    setActiveConversation
+  ])
 
-  return <MessagingContext.Provider value={value}>{children}</MessagingContext.Provider>
+  return <MessagingContext.Provider value={contextValue}>{children}</MessagingContext.Provider>
 }
 
 export const useMessaging = () => {

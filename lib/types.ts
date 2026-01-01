@@ -8,6 +8,7 @@ export interface User {
   role: UserRole
   firstName: string
   lastName: string
+  name?: string
   birthDate: string
   phone: string
   avatar?: string
@@ -25,9 +26,9 @@ export interface User {
   }
 
   // Privacy & Social
-  acceptOnlyFromFollowed?: boolean
-  showFollowers?: boolean
-  showFollowing?: boolean
+  acceptOnlyFromFollowed: boolean
+  showFollowers: boolean
+  showFollowing: boolean
 }
 
 export interface SocialStats {

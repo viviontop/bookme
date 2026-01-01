@@ -39,6 +39,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils"
 import { SocialListDialog } from "@/components/social-list-dialog"
 import { getSocialStats as getSocialStatsDB } from "@/app/actions"
 
@@ -184,7 +185,17 @@ export default function ProfilePage({ params }: { readonly params: Promise<{ use
                         <Button
                           variant={isFollowing(profileUser.id) ? "outline" : "default"}
                           className="rounded-full px-8 font-bold shadow-lg"
-                          onClick={() => isFollowing(profileUser.id) ? unfollow(profileUser.id) : follow(profileUser.id)}
+                          onClick={() => {
+                            if (isFollowing(profileUser.id)) {
+                              unfollow(profileUser.id).then(() => {
+                                getSocialStatsDB(profileUser.id).then(setSocialStats)
+                              })
+                            } else {
+                              follow(profileUser.id).then(() => {
+                                getSocialStatsDB(profileUser.id).then(setSocialStats)
+                              })
+                            }
+                          }}
                         >
                           {isFollowing(profileUser.id) ? "Unfollow" : "Follow"}
                         </Button>
@@ -283,7 +294,7 @@ export default function ProfilePage({ params }: { readonly params: Promise<{ use
                       <ServiceCard
                         key={service.id}
                         service={service}
-                        seller={profileUser}
+                        seller={service.seller as any}
                         onClick={() => {
                           setSelectedService(service)
                           setShowBooking(true)

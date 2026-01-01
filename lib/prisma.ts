@@ -11,7 +11,15 @@ const adapter = new PrismaPg(pool)
 // Use global singleton to prevent multiple instances in dev
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
-const prisma = globalForPrisma.prisma || new PrismaClient({ adapter })
+const prisma = (() => {
+    const existing = globalForPrisma.prisma
+    // If we have an existing client, check if it has the 'follow' model (added recently)
+    // This helps recover from stale global instances during development
+    if (existing && (existing as any).follow) {
+        return existing
+    }
+    return new PrismaClient({ adapter })
+})()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 

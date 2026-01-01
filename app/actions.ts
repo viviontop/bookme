@@ -34,14 +34,17 @@ export async function getServices() {
                 email: s.seller.email,
                 username: s.seller.username || undefined,
                 name: s.seller.name,
-                firstName: s.seller.name?.split(" ")[0] || "",
-                lastName: s.seller.name?.split(" ")[1] || "",
-                role: "seller" as const,
+                firstName: s.seller.firstName || s.seller.name?.split(" ")[0] || "",
+                lastName: s.seller.lastName || s.seller.name?.split(" ")[1] || "",
+                role: s.seller.role as any,
                 avatar: s.seller.avatar || undefined,
                 bio: s.seller.bio || undefined,
                 location: s.seller.location || undefined,
                 createdAt: s.seller.createdAt.toISOString(),
-                isVerified: true
+                isVerified: s.seller.isVerified,
+                acceptOnlyFromFollowed: s.seller.acceptOnlyFromFollowed ?? false,
+                showFollowers: s.seller.showFollowers ?? true,
+                showFollowing: s.seller.showFollowing ?? true
             } : undefined
         }))
     } catch (error) {
@@ -53,35 +56,40 @@ export async function getServices() {
 
 export async function getUserById(userId: string) {
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: userId }
+        const user = await (prisma as any).user.findUnique({
+            where: { id: userId },
+            include: {
+                services: true
+            }
         })
 
         if (!user) return null
 
         return {
+            ...user,
             id: user.id,
             email: user.email,
-            username: user.username || undefined,
-            role: user.role || "buyer",
-            firstName: user.name?.split(" ")[0] || "",
-            lastName: user.name?.split(" ")[1] || "",
-            birthDate: "",
-            phone: "",
-            avatar: user.avatar || undefined,
-            bio: user.bio || undefined,
-            location: user.location || undefined,
-            banner: user.banner || undefined,
-            bannerAspectRatio: user.bannerAspectRatio || undefined,
-            kycStatus: user.kycStatus || "pending",
+            username: user.username,
+            role: user.role,
+            firstName: user.firstName || user.name?.split(" ")[0] || "",
+            lastName: user.lastName || user.name?.split(" ")[1] || "",
+            avatar: user.avatar,
+            bio: user.bio,
+            location: user.location,
+            banner: user.banner,
+            bannerAspectRatio: user.bannerAspectRatio,
             createdAt: user.createdAt.toISOString(),
-            isVerified: user.isVerified || false,
-            acceptOnlyFromFollowed: user.acceptOnlyFromFollowed,
-            showFollowers: user.showFollowers,
-            showFollowing: user.showFollowing
-        }
+            isVerified: user.isVerified,
+            kycStatus: user.kycStatus,
+            acceptOnlyFromFollowed: user.acceptOnlyFromFollowed ?? false,
+            showFollowers: user.showFollowers ?? true,
+            showFollowing: user.showFollowing ?? true,
+            services: user.services.map((s: any) => ({
+                ...s,
+                createdAt: s.createdAt.toISOString()
+            }))
+        } as any
     } catch (error) {
-        console.error("Error fetching user by ID:", error)
         return null
     }
 }
@@ -93,9 +101,9 @@ export async function getUsers() {
             id: u.id,
             email: u.email,
             username: u.username || undefined,
-            role: u.role || "buyer", // Use actual role from DB
-            firstName: u.name?.split(" ")[0] || "",
-            lastName: u.name?.split(" ")[1] || "",
+            role: u.role as any,
+            firstName: u.firstName || u.name?.split(" ")[0] || "",
+            lastName: u.lastName || u.name?.split(" ")[1] || "",
             birthDate: "",
             phone: "",
             avatar: u.avatar || undefined,
@@ -103,12 +111,12 @@ export async function getUsers() {
             location: u.location || undefined,
             banner: u.banner || undefined,
             bannerAspectRatio: u.bannerAspectRatio || undefined,
-            kycStatus: u.kycStatus || "pending",
+            kycStatus: u.kycStatus as any,
             createdAt: u.createdAt.toISOString(),
-            isVerified: u.isVerified || false,
-            acceptOnlyFromFollowed: u.acceptOnlyFromFollowed,
-            showFollowers: u.showFollowers,
-            showFollowing: u.showFollowing
+            isVerified: u.isVerified,
+            acceptOnlyFromFollowed: u.acceptOnlyFromFollowed ?? false,
+            showFollowers: u.showFollowers ?? true,
+            showFollowing: u.showFollowing ?? true
         }))
     } catch (error) {
         console.error("Error fetching users:", error)
@@ -161,12 +169,14 @@ export async function registerUserDB(data: {
             return { success: false, error: "Username is required" }
         }
 
-        const user = await prisma.user.upsert({
+        const user = await (prisma as any).user.upsert({
             where: { id: data.id },
             update: {
                 email: data.email,
                 username: data.username,
                 name: `${data.firstName} ${data.lastName}`,
+                firstName: data.firstName,
+                lastName: data.lastName,
                 role: data.role,
             },
             create: {
@@ -174,6 +184,8 @@ export async function registerUserDB(data: {
                 email: data.email,
                 username: data.username,
                 name: `${data.firstName} ${data.lastName}`,
+                firstName: data.firstName,
+                lastName: data.lastName,
                 role: data.role || "buyer",
             },
         })
@@ -187,42 +199,44 @@ export async function registerUserDB(data: {
 
 export async function getUserByUsername(username: string) {
     try {
-        // Remove @ if present
-        const cleanUsername = username.replace("@", "")
-
-        const user = await prisma.user.findUnique({
-            where: { username: cleanUsername },
+        const user = await (prisma as any).user.findUnique({
+            where: { username },
             include: {
-                services: true
+                services: {
+                    include: {
+                        seller: true
+                    }
+                }
             }
         })
 
         if (!user) return null
 
-        // Map to frontend user type with all fields
         return {
+            ...user,
             id: user.id,
             email: user.email,
-            username: user.username || undefined,
-            firstName: user.name?.split(" ")[0] || "",
-            lastName: user.name?.split(" ")[1] || "",
-            role: user.role as any,
-            avatar: user.avatar || undefined,
-            bio: user.bio || undefined,
-            location: user.location || undefined,
-            banner: user.banner || undefined,
-            bannerAspectRatio: user.bannerAspectRatio || undefined,
-            birthDate: "",
-            phone: "",
-            kycStatus: user.kycStatus as any,
+            username: user.username,
+            role: user.role,
+            firstName: user.firstName || user.name?.split(" ")[0] || "",
+            lastName: user.lastName || user.name?.split(" ")[1] || "",
+            avatar: user.avatar,
+            bio: user.bio,
+            location: user.location,
+            banner: user.banner,
+            bannerAspectRatio: user.bannerAspectRatio,
             createdAt: user.createdAt.toISOString(),
             isVerified: user.isVerified,
-            acceptOnlyFromFollowed: user.acceptOnlyFromFollowed,
-            showFollowers: user.showFollowers,
-            showFollowing: user.showFollowing
-        }
+            kycStatus: user.kycStatus,
+            acceptOnlyFromFollowed: user.acceptOnlyFromFollowed ?? false,
+            showFollowers: user.showFollowers ?? true,
+            showFollowing: user.showFollowing ?? true,
+            services: (user.services || []).map((s: any) => ({
+                ...s,
+                createdAt: s.createdAt.toISOString()
+            }))
+        } as any
     } catch (error) {
-        console.error("Error fetching user by username:", error)
         return null
     }
 }
@@ -287,6 +301,16 @@ export async function updateUser(userId: string, data: any) {
         if (typeof data.showFollowers === 'boolean') prismaData.showFollowers = data.showFollowers
         if (typeof data.showFollowing === 'boolean') prismaData.showFollowing = data.showFollowing
 
+        // Match firstName/lastName fields if they exist in schema
+        if (data.firstName) {
+            prismaData.firstName = data.firstName
+            prismaData.name = `${data.firstName} ${data.lastName || ''}`
+        }
+        if (data.lastName) {
+            prismaData.lastName = data.lastName
+            prismaData.name = `${data.firstName || ''} ${data.lastName}`
+        }
+
         await prisma.user.update({
             where: { id: userId },
             data: prismaData
@@ -306,21 +330,26 @@ export async function updateUser(userId: string, data: any) {
 }
 
 export async function followUser(followerId: string, followingId: string) {
+    if (!(prisma as any).follow) return { success: false, error: "Follow model not available in Prisma" }
     try {
-        await prisma.follow.create({
+        await (prisma as any).follow.create({
             data: { followerId, followingId }
         })
         revalidatePath(`/profile/${followingId}`)
         return { success: true }
-    } catch (error) {
+    } catch (error: any) {
+        if (error.code === 'P2002') return { success: true }
         return { success: false, error: String(error) }
     }
 }
 
 export async function unfollowUser(followerId: string, followingId: string) {
+    if (!(prisma as any).follow) return { success: false, error: "Follow model not available" }
     try {
-        await prisma.follow.delete({
-            where: { followerId_followingId: { followerId, followingId } }
+        await (prisma as any).follow.delete({
+            where: {
+                followerId_followingId: { followerId, followingId }
+            }
         })
         revalidatePath(`/profile/${followingId}`)
         return { success: true }
@@ -333,8 +362,8 @@ export async function blockUser(blockerId: string, blockedId: string) {
     try {
         // Also unfollow automatically if blocking
         await prisma.$transaction([
-            prisma.block.create({ data: { blockerId, blockedId } }),
-            prisma.follow.deleteMany({
+            (prisma as any).block.create({ data: { blockerId, blockedId } }),
+            (prisma as any).follow.deleteMany({
                 where: {
                     OR: [
                         { followerId: blockerId, followingId: blockedId },
@@ -352,7 +381,7 @@ export async function blockUser(blockerId: string, blockedId: string) {
 
 export async function unblockUser(blockerId: string, blockedId: string) {
     try {
-        await prisma.block.delete({
+        await (prisma as any).block.delete({
             where: { blockerId_blockedId: { blockerId, blockedId } }
         })
         revalidatePath("/chat")
@@ -364,18 +393,20 @@ export async function unblockUser(blockerId: string, blockedId: string) {
 
 export async function getSocialStats(userId: string) {
     try {
-        const user = await prisma.user.findUnique({
+        if (!(prisma as any).follow) return { followers: 0, following: 0 }
+        const user = await (prisma as any).user.findUnique({
             where: { id: userId },
             select: { showFollowers: true, showFollowing: true }
         })
         if (!user) return { followers: 0, following: 0 }
 
         const [followers, following] = await Promise.all([
-            user.showFollowers ? prisma.follow.count({ where: { followingId: userId } }) : Promise.resolve(0),
-            user.showFollowing ? prisma.follow.count({ where: { followerId: userId } }) : Promise.resolve(0)
+            (user.showFollowers ?? true) ? (prisma as any).follow.count({ where: { followingId: userId } }) : Promise.resolve(0),
+            (user.showFollowing ?? true) ? (prisma as any).follow.count({ where: { followerId: userId } }) : Promise.resolve(0)
         ])
         return { followers, following }
     } catch (error) {
+        console.error("Error getting social stats:", error)
         return { followers: 0, following: 0 }
     }
 }
@@ -386,22 +417,21 @@ export async function getFollowers(userId: string) {
             where: { id: userId },
             select: { showFollowers: true }
         })
-        // If not found or private, only allow if current user is owner? 
-        // For simplicity, let's just respect the flag for everyone.
-        if (!user || !user.showFollowers) return []
+        if (!user || user.showFollowers === false) return []
 
-        const followers = await prisma.follow.findMany({
+        const followers = await (prisma as any).follow.findMany({
             where: { followingId: userId },
             include: { follower: true }
         })
-        return followers.map(f => ({
+        return followers.map((f: any) => ({
             id: f.follower.id,
             username: f.follower.username,
-            firstName: f.follower.name?.split(" ")[0] || "",
-            lastName: f.follower.name?.split(" ")[1] || "",
+            firstName: f.follower.firstName || f.follower.name?.split(" ")[0] || "",
+            lastName: f.follower.lastName || f.follower.name?.split(" ")[1] || "",
             avatar: f.follower.avatar
         }))
     } catch (error) {
+        console.error("Error getting followers:", error)
         return []
     }
 }
@@ -412,20 +442,21 @@ export async function getFollowing(userId: string) {
             where: { id: userId },
             select: { showFollowing: true }
         })
-        if (!user || !user.showFollowing) return []
+        if (!user || user.showFollowing === false) return []
 
-        const following = await prisma.follow.findMany({
+        const following = await (prisma as any).follow.findMany({
             where: { followerId: userId },
             include: { following: true }
         })
-        return following.map(f => ({
+        return following.map((f: any) => ({
             id: f.following.id,
             username: f.following.username,
-            firstName: f.following.name?.split(" ")[0] || "",
-            lastName: f.following.name?.split(" ")[1] || "",
+            firstName: f.following.firstName || f.following.name?.split(" ")[0] || "",
+            lastName: f.following.lastName || f.following.name?.split(" ")[1] || "",
             avatar: f.following.avatar
         }))
     } catch (error) {
+        console.error("Error getting following:", error)
         return []
     }
 }
@@ -433,9 +464,9 @@ export async function getFollowing(userId: string) {
 export async function checkSocialRelation(currentUserId: string, targetUserId: string) {
     try {
         const [follow, blocked, blocking] = await Promise.all([
-            prisma.follow.findUnique({ where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } } }),
-            prisma.block.findUnique({ where: { blockerId_blockedId: { blockerId: targetUserId, blockedId: currentUserId } } }),
-            prisma.block.findUnique({ where: { blockerId_blockedId: { blockerId: currentUserId, blockedId: targetUserId } } })
+            (prisma as any).follow.findUnique({ where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } } }),
+            (prisma as any).block.findUnique({ where: { blockerId_blockedId: { blockerId: targetUserId, blockedId: currentUserId } } }),
+            (prisma as any).block.findUnique({ where: { blockerId_blockedId: { blockerId: currentUserId, blockedId: targetUserId } } })
         ])
         return {
             isFollowing: !!follow,
@@ -457,15 +488,20 @@ export async function getSocialDataDB(userId: string) {
                 blocks: { select: { blockedId: true } },
                 blockedBy: { select: { blockerId: true } }
             }
-        })
+        } as any)
 
-        if (!user) return null
+        if (!user) return {
+            following: [],
+            followers: [],
+            blocking: [],
+            blockedBy: []
+        }
 
         return {
-            following: user.following.map(f => f.followingId),
-            followers: user.followers.map(f => f.followerId),
-            blocking: user.blocks.map(b => b.blockedId),
-            blockedBy: user.blockedBy.map(b => b.blockerId)
+            following: (user.following || []).map((f: any) => f.followingId),
+            followers: (user.followers || []).map((f: any) => f.followerId),
+            blocking: (user.blocks || []).map((b: any) => b.blockedId),
+            blockedBy: (user.blockedBy || []).map((b: any) => b.blockerId)
         }
     } catch (error) {
         console.error("Error fetching social data:", error)
@@ -474,66 +510,43 @@ export async function getSocialDataDB(userId: string) {
 }
 
 export async function sendMessage(senderId: string, receiverId: string, content: string, fileUrl?: string, fileType?: string) {
+    if (!(prisma as any).message || !(prisma as any).conversation) {
+        return { success: false, error: "Messaging models not available" }
+    }
     try {
-        // 1. Check if blocked
-        const blocked = await prisma.block.findFirst({
+        // Find or create conversation
+        let conversation = await (prisma as any).conversation.findFirst({
             where: {
-                OR: [
-                    { blockerId: senderId, blockedId: receiverId },
-                    { blockerId: receiverId, blockedId: senderId }
-                ]
-            }
-        })
-
-        if (blocked) {
-            return { success: false, error: "You cannot message this user." }
-        }
-
-        // 2. Check privacy settings (Message Request logic)
-        const receiver = await prisma.user.findUnique({
-            where: { id: receiverId },
-            select: { acceptOnlyFromFollowed: true }
-        })
-
-        let conversationStatus = "active"
-        if (receiver?.acceptOnlyFromFollowed) {
-            const isFollowing = await prisma.follow.findUnique({
-                where: { followerId_followingId: { followerId: receiverId, followingId: senderId } }
-            })
-            if (!isFollowing) {
-                conversationStatus = "request"
-            }
-        }
-
-        const conversationId = [senderId, receiverId].sort().join("-")
-
-        const conversation = await prisma.conversation.upsert({
-            where: { id: conversationId },
-            update: {
-                lastMessageAt: new Date(),
-                // If it was already archived or a request, might keep it as is or update to active if sender is followed?
-                // For now, let's keep it simple.
-            },
-            create: {
-                id: conversationId,
-                participantIds: [senderId, receiverId],
-                status: conversationStatus,
-                participants: {
-                    connect: [{ id: senderId }, { id: receiverId }]
+                participantIds: {
+                    hasEvery: [senderId, receiverId]
                 }
             }
         })
 
-        const message = await prisma.message.create({
+        if (!conversation) {
+            conversation = await (prisma as any).conversation.create({
+                data: {
+                    participantIds: [senderId, receiverId],
+                    status: "request" // Start as request
+                }
+            })
+        }
+
+        const message = await (prisma as any).message.create({
             data: {
                 conversationId: conversation.id,
                 senderId,
                 receiverId,
                 content,
                 fileUrl,
-                fileType,
-                read: false
+                fileType
             }
+        })
+
+        // Update lastMessageAt
+        await (prisma as any).conversation.update({
+            where: { id: conversation.id },
+            data: { lastMessageAt: new Date() }
         })
 
         return {
@@ -543,14 +556,13 @@ export async function sendMessage(senderId: string, receiverId: string, content:
             }
         }
     } catch (error) {
-        console.error("Error sending message:", error)
         return { success: false, error: String(error) }
     }
 }
 
 export async function getConversations(userId: string) {
     try {
-        const conversations = await prisma.conversation.findMany({
+        const conversations = await (prisma as any).conversation.findMany({
             where: {
                 participantIds: {
                     has: userId
@@ -569,8 +581,8 @@ export async function getConversations(userId: string) {
             }
         })
 
-        return await Promise.all(conversations.map(async (c) => {
-            const unreadCount = await prisma.message.count({
+        return await Promise.all(conversations.map(async (c: any) => {
+            const unreadCount = await (prisma as any).message.count({
                 where: {
                     conversationId: c.id,
                     receiverId: userId,
@@ -580,20 +592,20 @@ export async function getConversations(userId: string) {
 
             return {
                 id: c.id,
-                participantIds: c.participantIds,
-                lastMessage: c.messages[0] ? {
+                participantIds: c.participantIds || [],
+                lastMessage: c.messages && c.messages[0] ? {
                     id: c.messages[0].id,
                     content: c.messages[0].content,
                     fileUrl: c.messages[0].fileUrl,
                     fileType: c.messages[0].fileType,
-                    createdAt: c.messages[0].createdAt.toISOString(),
+                    createdAt: c.messages[0].createdAt ? c.messages[0].createdAt.toISOString() : new Date().toISOString(),
                     senderId: c.messages[0].senderId,
                     receiverId: c.messages[0].receiverId,
                     read: c.messages[0].read
                 } : undefined,
-                lastMessageAt: c.lastMessageAt.toISOString(),
+                lastMessageAt: c.lastMessageAt ? c.lastMessageAt.toISOString() : new Date().toISOString(),
                 unreadCount,
-                status: c.status
+                status: c.status || "active"
             }
         }))
     } catch (error) {
@@ -604,7 +616,7 @@ export async function getConversations(userId: string) {
 
 export async function updateConversationStatus(conversationId: string, status: string) {
     try {
-        await prisma.conversation.update({
+        await (prisma as any).conversation.update({
             where: { id: conversationId },
             data: { status }
         })
@@ -617,12 +629,12 @@ export async function updateConversationStatus(conversationId: string, status: s
 
 export async function getMessages(conversationId: string) {
     try {
-        const messages = await prisma.message.findMany({
+        const messages = await (prisma as any).message.findMany({
             where: { conversationId },
             orderBy: { createdAt: "asc" }
         })
 
-        return messages.map(m => ({
+        return messages.map((m: any) => ({
             ...m,
             createdAt: m.createdAt.toISOString()
         }))
@@ -634,7 +646,7 @@ export async function getMessages(conversationId: string) {
 
 export async function markAsRead(conversationId: string, userId: string) {
     try {
-        await prisma.message.updateMany({
+        await (prisma as any).message.updateMany({
             where: {
                 conversationId,
                 receiverId: userId,

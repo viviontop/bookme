@@ -53,7 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           banner: dbUser.banner,
           bannerAspectRatio: dbUser.bannerAspectRatio,
           kycStatus: dbUser.kycStatus as any,
-          isVerified: dbUser.isVerified
+          isVerified: dbUser.isVerified,
+          acceptOnlyFromFollowed: dbUser.acceptOnlyFromFollowed,
+          showFollowers: dbUser.showFollowers,
+          showFollowing: dbUser.showFollowing
         })
       } else {
         // Fallback to metadata if DB user not found
@@ -105,7 +108,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           banner: dbUser.banner,
           bannerAspectRatio: dbUser.bannerAspectRatio,
           kycStatus: dbUser.kycStatus as any,
-          isVerified: dbUser.isVerified
+          isVerified: dbUser.isVerified,
+          acceptOnlyFromFollowed: dbUser.acceptOnlyFromFollowed,
+          showFollowers: dbUser.showFollowers,
+          showFollowing: dbUser.showFollowing
         })
       } else {
         setUser(fromSupabaseUser(data.user))
@@ -197,6 +203,9 @@ function fromSupabaseUser(u: any): User {
     isVerified: !!u.email_confirmed_at,
     kycStatus: "pending",
     kycDocuments: undefined,
+    acceptOnlyFromFollowed: u.user_metadata?.acceptOnlyFromFollowed ?? false,
+    showFollowers: u.user_metadata?.showFollowers ?? true,
+    showFollowing: u.user_metadata?.showFollowing ?? true,
   }
 }
 
