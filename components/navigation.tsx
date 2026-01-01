@@ -25,6 +25,7 @@ import { useMessaging } from "@/lib/messaging-context"
 import { useData } from "@/lib/data-context"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { NotificationBell } from "@/components/notification-bell"
 
 export function Navigation() {
   const { user, logout } = useAuth()
@@ -209,6 +210,9 @@ export function Navigation() {
             </div>
             <span className="text-xl font-semibold text-foreground">BookMe</span>
           </Link>
+          <div className="md:hidden ml-auto mr-2">
+            <NotificationBell />
+          </div>
         </div>
 
         {/* Desktop Navigation */}
@@ -245,6 +249,10 @@ export function Navigation() {
         <div className="flex items-center gap-2">
           {/* Theme Toggle */}
           <ThemeToggle />
+
+          <div className="hidden md:block">
+            <NotificationBell />
+          </div>
 
           {/* Settings Button */}
           <Link href="/settings">

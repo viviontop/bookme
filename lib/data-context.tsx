@@ -1,8 +1,22 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react"
-import type { Service, Availability, Appointment, Review, User } from "./types"
-import { getServices, getUsers, createService, registerUserDB, updateUser as updateUserDB } from "@/app/actions"
+import type { Service, Availability, Appointment, Review, User, Notification } from "./types"
+import {
+  getServices,
+  getUsers,
+  createService,
+  registerUserDB,
+  updateUser as updateUserDB,
+  getNotifications,
+  markNotificationRead,
+  createAppointment as createAppointmentDB,
+  getAppointments as getAppointmentsDB,
+  updateAppointment as updateAppointmentDB,
+  getAvailability,
+  updateAvailability
+} from "@/app/actions"
+import { useAuth } from "./auth-context"
 
 
 interface DataContextType {
@@ -11,12 +25,13 @@ interface DataContextType {
   appointments: Appointment[]
   reviews: Review[]
   users: User[]
+  notifications: Notification[]
   addService: (service: Omit<Service, "id">) => Promise<{ success: boolean; error?: string }>
   updateService: (id: string, data: Partial<Service>) => void
   deleteService: (id: string) => void
-  setAvailability: (avail: Omit<Availability, "id">[]) => void
-  createAppointment: (appt: Omit<Appointment, "id" | "createdAt">) => void
-  updateAppointment: (id: string, data: Partial<Appointment>) => void
+  setAvailability: (avail: Omit<Availability, "id">[]) => Promise<void>
+  createAppointment: (appt: any) => Promise<any>
+  updateAppointment: (id: string, status: string) => Promise<void>
   addReview: (review: Omit<Review, "id" | "createdAt">) => void
   getSellerRating: (sellerId: string) => { rating: number; count: number }
   getBuyerRating: (buyerId: string) => { rating: number; count: number }
@@ -28,6 +43,8 @@ interface DataContextType {
   getUserStats: (userId: string) => { earnings: number; appointments: number; monthlyEarnings: Record<string, number> }
   clearAppointments: () => void
   syncUser: (user: User) => void
+  fetchNotifications: () => Promise<void>
+  markNotificationAsRead: (id: string) => Promise<void>
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -38,33 +55,52 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [availability, setAvailabilityState] = useState<Availability[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const { user } = useAuth()
 
   useEffect(() => {
     const loadData = async () => {
-      // Load real data from DB
       try {
         const [dbServices, dbUsers] = await Promise.all([getServices(), getUsers()])
         if (dbServices) setServices(dbServices as Service[])
         if (dbUsers) setUsers(dbUsers as User[])
+
+        if (user) {
+          const [dbAppts, dbAvail, dbNotifs] = await Promise.all([
+            getAppointmentsDB(user.id),
+            getAvailability(user.id),
+            getNotifications(user.id)
+          ])
+          setAppointments(dbAppts as any)
+          setAvailabilityState(dbAvail as any)
+          setNotifications(dbNotifs as any)
+        }
       } catch (error) {
         console.error("Failed to load data from DB:", error)
       }
 
-      // Load local storage for other items for now
+      // Reviews still in local storage for now
       try {
-        const storedAppointments = localStorage.getItem("appointments")
         const storedReviews = localStorage.getItem("reviews")
-        const storedAvailability = localStorage.getItem("availability")
-
-        if (storedAppointments) setAppointments(JSON.parse(storedAppointments))
         if (storedReviews) setReviews(JSON.parse(storedReviews))
-        if (storedAvailability) setAvailabilityState(JSON.parse(storedAvailability))
       } catch (error) {
-        console.error("Error loading local storage:", error)
+        console.error("Error loading reviews from local storage:", error)
       }
     }
     loadData()
-  }, [])
+
+    // Poll for notifications every 30 seconds if user is logged in
+    let interval: NodeJS.Timeout
+    if (user) {
+      interval = setInterval(() => {
+        fetchNotifications()
+      }, 30000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [user])
 
   const addService = async (service: Omit<Service, "id">) => {
     const res = await createService(service)
@@ -91,29 +127,50 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
     console.log("Delete service not implemented yet for DB", id)
   }
 
-  const setAvailabilityData = (avail: Omit<Availability, "id">[]) => {
-    const withIds = avail.map((a) => ({ ...a, id: crypto.randomUUID() }))
-    setAvailabilityState(withIds)
-    localStorage.setItem("availability", JSON.stringify(withIds))
+  const setAvailabilityData = async (avail: Omit<Availability, "id">[]) => {
+    if (!user) return
+    const res = await updateAvailability(user.id, avail)
+    if (res.success) {
+      const dbAvail = await getAvailability(user.id)
+      setAvailabilityState(dbAvail as any)
+    }
   }
 
-  const createAppointment = (appt: Omit<Appointment, "id" | "createdAt">) => {
-    const newAppt = { ...appt, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
-    const updated = [...appointments, newAppt]
-    setAppointments(updated)
-    localStorage.setItem("appointments", JSON.stringify(updated))
-    return newAppt
+  const createAppointment = async (appt: any) => {
+    const res = await createAppointmentDB(appt)
+    if (res.success) {
+      if (user) {
+        const dbAppts = await getAppointmentsDB(user.id)
+        setAppointments(dbAppts as any)
+      }
+      return res.appointment
+    }
+    return null
   }
 
-  const updateAppointment = (id: string, data: Partial<Appointment>) => {
-    const updated = appointments.map((a) => (a.id === id ? { ...a, ...data } : a))
-    setAppointments(updated)
-    localStorage.setItem("appointments", JSON.stringify(updated))
+  const updateAppointment = async (id: string, status: string) => {
+    const res = await updateAppointmentDB(id, status)
+    if (res.success && user) {
+      const dbAppts = await getAppointmentsDB(user.id)
+      setAppointments(dbAppts as any)
+    }
   }
 
   const clearAppointments = () => {
     setAppointments([])
-    localStorage.setItem("appointments", "[]")
+  }
+
+  const fetchNotifications = async () => {
+    if (!user) return
+    const dbNotifs = await getNotifications(user.id)
+    setNotifications(dbNotifs as any)
+  }
+
+  const markNotificationAsRead = async (id: string) => {
+    const res = await markNotificationRead(id)
+    if (res.success) {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+    }
   }
 
   const addReview = (review: Omit<Review, "id" | "createdAt">) => {
@@ -215,6 +272,7 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
       appointments,
       reviews,
       users,
+      notifications,
       addService,
       updateService,
       deleteService,
@@ -232,8 +290,10 @@ export function DataProvider({ children }: { readonly children: ReactNode }) {
       getUserStats,
       clearAppointments,
       syncUser,
+      fetchNotifications,
+      markNotificationAsRead,
     }),
-    [services, availability, appointments, reviews, users]
+    [services, availability, appointments, reviews, users, notifications]
   )
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>

@@ -130,15 +130,6 @@ export function ChatContent() {
     }
   }, [messages.length])
 
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">Please sign in to access messages.</p>
-        <Button className="mt-4" onClick={() => router.push('/signin')}>Sign In</Button>
-      </div>
-    )
-  }
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -155,7 +146,7 @@ export function ChatContent() {
     if ((!messageInput.trim() && !selectedFile) || !selectedUserId || isUploading) return
 
     const content = messageInput
-    setMessageInput("") // Instant clear for faster feeling
+    setMessageInput("")
 
     let fileUrl = undefined
     let fileType = undefined
@@ -165,7 +156,7 @@ export function ChatContent() {
       try {
         const fileExt = selectedFile.file.name.split('.').pop()
         const fileName = `${Math.random()}.${fileExt}`
-        const filePath = `${user.id}/${fileName}`
+        const filePath = `${user?.id}/${fileName}`
 
         const { data, error } = await supabase.storage
           .from('chat-attachments')
@@ -188,7 +179,6 @@ export function ChatContent() {
       }
     }
 
-    // Messaging service handles optimism and queuing
     const result = await sendMessage(selectedUserId, content, fileUrl, fileType)
     if (!result.success) {
       toast.error(result.error || "Failed to send message")
@@ -198,11 +188,9 @@ export function ChatContent() {
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
-  // Filter conversations
   const filteredConversations = useMemo(() => {
     if (!Array.isArray(conversations) || !Array.isArray(allUsers)) return []
     return conversations.filter((c: any) => {
-      // Filter by tab (requests vs active)
       if (activeTab === "conversations" && c.status !== "active") return false
       if (activeTab === "requests" && c.status !== "request") return false
 
@@ -223,6 +211,15 @@ export function ChatContent() {
   }, [conversations, allUsers, user?.id, searchQuery, activeTab])
 
   const selectedUser = selectedUserId ? allUsers?.find((u: any) => u.id === selectedUserId) : null
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground">Please sign in to access messages.</p>
+        <Button className="mt-4" onClick={() => router.push('/signin')}>Sign In</Button>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-[calc(100vh-4rem)] bg-background relative overflow-hidden">

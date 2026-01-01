@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
+import { BookingDialog } from "./booking-dialog"
 
 interface ServiceCardProps {
   service: Service
@@ -35,6 +36,7 @@ export function ServiceCard({ service, seller, onClick }: ServiceCardProps) {
   // State for report and delete
   const [isReportOpen, setIsReportOpen] = useState(false)
   const [reportReason, setReportReason] = useState("")
+  const [isBookingOpen, setIsBookingOpen] = useState(false)
 
   const isOwner = currentUser?.id === seller.id
   const isAdmin = currentUser?.role === "admin"
@@ -385,6 +387,7 @@ export function ServiceCard({ service, seller, onClick }: ServiceCardProps) {
               </Button>
               <Button
                 className="flex-1 h-12 md:h-16 rounded-xl md:rounded-2xl text-base md:text-lg font-black shadow-[0_10px_30px_-10px_rgba(var(--primary),0.5)] transition-all hover:translate-y-[-2px] hover:shadow-[0_15px_35px_-10px_rgba(var(--primary),0.6)] active:scale-95"
+                onClick={() => setIsBookingOpen(true)}
               >
                 Book Now
               </Button>
@@ -392,6 +395,12 @@ export function ServiceCard({ service, seller, onClick }: ServiceCardProps) {
           </div>
         </div>
       </DialogContent>
+      <BookingDialog
+        open={isBookingOpen}
+        onOpenChange={setIsBookingOpen}
+        service={service}
+        seller={seller}
+      />
     </Dialog>
   )
 }

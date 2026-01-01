@@ -206,7 +206,11 @@ export async function getUserByUsername(username: string) {
                     include: {
                         seller: true
                     }
-                }
+                },
+                following: true,
+                followers: true,
+                blocks: true,
+                blockedBy: true
             }
         })
 
@@ -335,6 +339,16 @@ export async function followUser(followerId: string, followingId: string) {
         await (prisma as any).follow.create({
             data: { followerId, followingId }
         })
+
+        // Notify user
+        const follower = await (prisma as any).user.findUnique({ where: { id: followerId }, select: { firstName: true, lastName: true, username: true } })
+        await createNotification(
+            followingId,
+            "FOLLOW",
+            `${follower.firstName} ${follower.lastName} (@${follower.username}) followed you`,
+            `/profile/${follower.username || followerId}`
+        )
+
         revalidatePath(`/profile/${followingId}`)
         return { success: true }
     } catch (error: any) {
@@ -413,11 +427,11 @@ export async function getSocialStats(userId: string) {
 
 export async function getFollowers(userId: string) {
     try {
-        const user = await prisma.user.findUnique({
+        const user = await (prisma as any).user.findUnique({
             where: { id: userId },
             select: { showFollowers: true }
         })
-        if (!user || user.showFollowers === false) return []
+        if (!user || (user as any).showFollowers === false) return []
 
         const followers = await (prisma as any).follow.findMany({
             where: { followingId: userId },
@@ -438,11 +452,11 @@ export async function getFollowers(userId: string) {
 
 export async function getFollowing(userId: string) {
     try {
-        const user = await prisma.user.findUnique({
+        const user = await (prisma as any).user.findUnique({
             where: { id: userId },
             select: { showFollowing: true }
         })
-        if (!user || user.showFollowing === false) return []
+        if (!user || (user as any).showFollowing === false) return []
 
         const following = await (prisma as any).follow.findMany({
             where: { followerId: userId },
@@ -498,10 +512,10 @@ export async function getSocialDataDB(userId: string) {
         }
 
         return {
-            following: (user.following || []).map((f: any) => f.followingId),
-            followers: (user.followers || []).map((f: any) => f.followerId),
-            blocking: (user.blocks || []).map((b: any) => b.blockedId),
-            blockedBy: (user.blockedBy || []).map((b: any) => b.blockerId)
+            following: ((user as any).following || []).map((f: any) => f.followingId),
+            followers: ((user as any).followers || []).map((f: any) => f.followerId),
+            blocking: ((user as any).blocks || []).map((b: any) => b.blockedId),
+            blockedBy: ((user as any).blockedBy || []).map((b: any) => b.blockerId)
         }
     } catch (error) {
         console.error("Error fetching social data:", error)
@@ -659,6 +673,167 @@ export async function markAsRead(conversationId: string, userId: string) {
         return { success: true }
     } catch (error) {
         console.error("Error marking as read:", error)
+        return { success: false, error: String(error) }
+    }
+}
+
+// Notifications
+export async function getNotifications(userId: string) {
+    try {
+        const notifications = await (prisma as any).notification.findMany({
+            where: { userId },
+            orderBy: { createdAt: "desc" }
+        })
+        return notifications.map((n: any) => ({
+            ...n,
+            createdAt: n.createdAt.toISOString()
+        }))
+    } catch (error) {
+        console.error("Error getting notifications:", error)
+        return []
+    }
+}
+
+export async function markNotificationRead(id: string) {
+    try {
+        await (prisma as any).notification.update({
+            where: { id },
+            data: { read: true }
+        })
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: String(error) }
+    }
+}
+
+export async function createNotification(userId: string, type: string, content: string, link?: string) {
+    try {
+        await (prisma as any).notification.create({
+            data: {
+                userId,
+                type,
+                content,
+                link,
+                read: false
+            }
+        })
+        return { success: true }
+    } catch (error) {
+        console.error("Error creating notification:", error)
+        return { success: false }
+    }
+}
+
+// Appointments
+export async function createAppointment(data: any) {
+    try {
+        const appointment = await (prisma as any).appointment.create({
+            data: {
+                serviceId: data.serviceId,
+                buyerId: data.buyerId,
+                datetime: new Date(`${data.date}T${data.time}:00`),
+                status: "pending"
+            }
+        })
+
+        // Notify seller
+        const service = await (prisma as any).service.findUnique({
+            where: { id: data.serviceId },
+            select: { sellerId: true, title: true }
+        })
+        if (service) {
+            await createNotification(
+                service.sellerId,
+                "APPOINTMENT",
+                `New booking request for ${service.title}`,
+                "/appointments"
+            )
+        }
+
+        return { success: true, appointment }
+    } catch (error) {
+        console.error("Error creating appointment:", error)
+        return { success: false, error: String(error) }
+    }
+}
+
+export async function getAppointments(userId: string) {
+    try {
+        const appointments = await (prisma as any).appointment.findMany({
+            where: {
+                OR: [
+                    { buyerId: userId },
+                    { service: { sellerId: userId } }
+                ]
+            },
+            include: {
+                service: true,
+                buyer: true
+            },
+            orderBy: { datetime: "asc" }
+        })
+        return appointments.map((a: any) => ({
+            ...a,
+            date: a.datetime.toISOString().split('T')[0],
+            time: a.datetime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+            createdAt: a.createdAt.toISOString()
+        }))
+    } catch (error) {
+        console.error("Error getting appointments:", error)
+        return []
+    }
+}
+
+export async function updateAppointment(id: string, status: string) {
+    try {
+        const apt = await (prisma as any).appointment.update({
+            where: { id },
+            data: { status },
+            include: { service: true }
+        })
+
+        // Notify buyer
+        await createNotification(
+            apt.buyerId,
+            "APPOINTMENT",
+            `Your appointment for ${apt.service.title} has been ${status}`,
+            "/appointments"
+        )
+
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: String(error) }
+    }
+}
+
+// Availability
+export async function getAvailability(sellerId: string) {
+    try {
+        return await (prisma as any).availability.findMany({
+            where: { sellerId }
+        })
+    } catch (error) {
+        return []
+    }
+}
+
+export async function updateAvailability(sellerId: string, slots: any[]) {
+    try {
+        // Simple replace for now
+        await (prisma as any).availability.deleteMany({
+            where: { sellerId }
+        })
+        await (prisma as any).availability.createMany({
+            data: slots.map(s => ({
+                sellerId,
+                dayOfWeek: s.dayOfWeek,
+                startTime: s.startTime,
+                endTime: s.endTime,
+                isActive: s.isActive ?? true
+            }))
+        })
+        return { success: true }
+    } catch (error) {
         return { success: false, error: String(error) }
     }
 }

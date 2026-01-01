@@ -61,7 +61,17 @@ export interface Availability {
   dayOfWeek: number // 0-6
   startTime: string // HH:MM
   endTime: string // HH:MM
-  isAvailable: boolean
+  isActive: boolean
+}
+
+export interface Notification {
+  id: string
+  userId: string
+  type: "FOLLOW" | "APPOINTMENT" | "MESSAGE" | "SYSTEM"
+  content: string
+  link?: string
+  read: boolean
+  createdAt: string
 }
 
 export interface Appointment {

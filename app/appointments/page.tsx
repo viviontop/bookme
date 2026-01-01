@@ -37,9 +37,7 @@ export default function AppointmentsPage() {
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState("")
 
-  useEffect(() => {
-    seedDemoData()
-  }, [])
+  // No longer seeding demo data automatically
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -73,15 +71,15 @@ export default function AppointmentsPage() {
   const pastAppointments = myAppointments.filter((a) => a.status === "completed" || a.status === "cancelled" || a.status === "rejected")
 
   const handleAccept = (id: string) => {
-    updateAppointment(id, { status: "confirmed" })
+    updateAppointment(id, "confirmed")
   }
 
   const handleDecline = (id: string) => {
-    updateAppointment(id, { status: "cancelled" })
+    updateAppointment(id, "cancelled")
   }
 
   const handleComplete = (id: string) => {
-    updateAppointment(id, { status: "completed" })
+    updateAppointment(id, "completed")
   }
 
   const openReviewDialog = (appointmentId: string) => {

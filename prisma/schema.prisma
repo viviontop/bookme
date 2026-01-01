@@ -46,6 +46,8 @@ model User {
   conversations Conversation[] @relation("UserConversations")
   sentMessages     Message[]      @relation("SentMessages")
   receivedMessages Message[]      @relation("ReceivedMessages")
+  notifications    Notification[] @relation("UserNotifications")
+  availability     Availability[] @relation("SellerAvailability")
 }
 
 model Follow {
@@ -119,4 +121,25 @@ model Appointment {
   datetime  DateTime
   status    String   @default("pending")
   createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserNotifications", fields: [userId], references: [id])
+  type      String   // FOLLOW, APPOINTMENT, MESSAGE, SYSTEM
+  content   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Availability {
+  id        String   @id @default(cuid())
+  sellerId  String
+  seller    User     @relation("SellerAvailability", fields: [sellerId], references: [id])
+  dayOfWeek Int      // 0-6 (Sunday-Saturday)
+  startTime String   // "09:00"
+  endTime   String   // "17:00"
+  isActive  Boolean  @default(true)
 }

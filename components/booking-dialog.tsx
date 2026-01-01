@@ -60,7 +60,6 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
       serviceId: service.id,
       date: selectedDate.toISOString().split("T")[0],
       time: selectedTime,
-      status: "pending",
     })
 
     setIsBooked(true)
@@ -81,12 +80,24 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
   // Get booked slots for the selected date
   const bookedSlots = selectedDate
     ? appointments
-        .filter(
-          (a) =>
-            a.sellerId === seller.id && a.date === selectedDate.toISOString().split("T")[0] && a.status !== "cancelled",
-        )
-        .map((a) => a.time)
+      .filter(
+        (a) =>
+          a.sellerId === seller.id && a.date === selectedDate.toISOString().split("T")[0] && a.status !== "cancelled" && a.status !== "rejected",
+      )
+      .map((a) => a.time)
     : []
+
+  const { availability } = useData()
+  const sellerAvail = availability.filter(a => a.sellerId === seller.id)
+
+  const currentDayAvail = selectedDate
+    ? sellerAvail.find(a => a.dayOfWeek === selectedDate.getDay() && a.isActive)
+    : null
+
+  const filteredTimeSlots = timeSlots.filter(slot => {
+    if (!currentDayAvail) return false
+    return slot >= currentDayAvail.startTime && slot <= currentDayAvail.endTime
+  })
 
   if (isBooked) {
     return (
@@ -159,7 +170,11 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
             mode="single"
             selected={selectedDate}
             onSelect={setSelectedDate}
-            disabled={(date) => date < new Date() || date.getDay() === 0}
+            disabled={(date) => {
+              const day = date.getDay()
+              const hasAvail = sellerAvail.some(a => a.dayOfWeek === day && a.isActive)
+              return date < new Date() || !hasAvail
+            }}
             className="rounded-md border"
           />
         </div>
@@ -169,7 +184,7 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
           <div className="space-y-3">
             <Label>Select Time</Label>
             <div className="grid grid-cols-4 gap-2">
-              {timeSlots.map((time) => {
+              {filteredTimeSlots.length > 0 ? filteredTimeSlots.map((time) => {
                 const isBooked = bookedSlots.includes(time)
                 return (
                   <Button
@@ -186,7 +201,11 @@ export function BookingDialog({ open, onOpenChange, service, seller }: BookingDi
                     {time}
                   </Button>
                 )
-              })}
+              }) : (
+                <div className="col-span-4 py-4 text-center text-sm text-muted-foreground italic">
+                  No slots available for this day.
+                </div>
+              )}
             </div>
           </div>
         )}
