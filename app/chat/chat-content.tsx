@@ -116,7 +116,19 @@ function ChatWithParams() {
           .from('chat-attachments')
           .upload(filePath, selectedFile.file)
 
-        if (uploadError) throw uploadError
+        if (uploadError) {
+          if (uploadError.message.includes('Bucket not found')) {
+            toast.error("Storage setup incomplete: Please create a bucket named 'chat-attachments' in your Supabase dashboard.")
+            setIsUploading(false)
+            return
+          }
+          if (uploadError.message.includes('row-level security')) {
+            toast.error("Permission denied: You need to add RLS policies to your 'chat-attachments' bucket in the Supabase dashboard.")
+            setIsUploading(false)
+            return
+          }
+          throw uploadError
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('chat-attachments')
@@ -126,7 +138,7 @@ function ChatWithParams() {
         fileType = selectedFile.file.type
       } catch (error) {
         console.error("Upload error:", error)
-        toast.error("Failed to upload file")
+        toast.error("Failed to upload file. Check your storage settings.")
         setIsUploading(false)
         return
       }
