@@ -23,6 +23,22 @@ export interface User {
     idBack?: string
     selfie?: string
   }
+
+  // Privacy & Social
+  acceptOnlyFromFollowed?: boolean
+  showFollowers?: boolean
+  showFollowing?: boolean
+}
+
+export interface SocialStats {
+  followers: number
+  following: number
+}
+
+export interface SocialRelation {
+  isFollowing: boolean
+  isBlockedBy: boolean
+  isBlocking: boolean
 }
 
 export interface Service {
@@ -91,6 +107,7 @@ export interface Message {
   fileType?: string
   createdAt: string
   read: boolean
+  status?: "pending" | "sent" | "error"
 }
 
 export interface Conversation {
@@ -99,4 +116,5 @@ export interface Conversation {
   lastMessage?: Message
   lastMessageAt?: string
   unreadCount: number
+  status: "active" | "request" | "archived"
 }

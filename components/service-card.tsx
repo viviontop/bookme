@@ -23,9 +23,10 @@ import { toast } from "sonner"
 interface ServiceCardProps {
   service: Service
   seller: User
+  onClick?: () => void
 }
 
-export function ServiceCard({ service, seller }: ServiceCardProps) {
+export function ServiceCard({ service, seller, onClick }: ServiceCardProps) {
   const { getSellerRating } = useData()
   const { user: currentUser } = useAuth()
   const router = useRouter()

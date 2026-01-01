@@ -18,6 +18,8 @@ model User {
   email       String        @unique
   username    String?       @unique
   name        String?
+  firstName   String?       @default("")
+  lastName    String?       @default("")
   createdAt   DateTime      @default(now())
   role        String        @default("buyer")
   avatar      String?
@@ -27,11 +29,45 @@ model User {
   bannerAspectRatio Float?
   isVerified  Boolean       @default(false)
   kycStatus   String        @default("pending")
+  
+  // Privacy & Social
+  acceptOnlyFromFollowed Boolean @default(false)
+  showFollowers          Boolean @default(true)
+  showFollowing          Boolean @default(true)
+
+  // Social
+  followers   Follow[]      @relation("Following")
+  following   Follow[]      @relation("Follower")
+  blocks      Block[]       @relation("Blocker")
+  blockedBy   Block[]       @relation("Blocked")
+
   services    Service[]
   appointments Appointment[]
   conversations Conversation[] @relation("UserConversations")
   sentMessages     Message[]      @relation("SentMessages")
   receivedMessages Message[]      @relation("ReceivedMessages")
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  follower    User     @relation("Follower", fields: [followerId], references: [id])
+  followerId  String
+  following   User     @relation("Following", fields: [followingId], references: [id])
+  followingId String
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id])
+  blockerId String
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id])
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
 }
 
 model Conversation {
@@ -41,6 +77,7 @@ model Conversation {
   messages       Message[]
   lastMessageAt  DateTime  @default(now())
   createdAt      DateTime  @default(now())
+  status         String    @default("active") // active, request, archived
 }
 
 model Message {

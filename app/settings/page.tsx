@@ -12,6 +12,7 @@ import type { User } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -56,6 +57,9 @@ export default function SettingsPage() {
     phone: "",
     bio: "",
     location: "",
+    acceptOnlyFromFollowed: false,
+    showFollowers: true,
+    showFollowing: true,
   })
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [showCropDialog, setShowCropDialog] = useState(false)
@@ -87,6 +91,9 @@ export default function SettingsPage() {
         phone: user.phone,
         bio: user.bio || "",
         location: user.location || "",
+        acceptOnlyFromFollowed: user.acceptOnlyFromFollowed || false,
+        showFollowers: user.showFollowers !== false, // Default to true
+        showFollowing: user.showFollowing !== false, // Default to true
       })
       // Initialize avatar preview with user's current avatar
       setAvatarPreview(user.avatar || null)
@@ -284,6 +291,7 @@ export default function SettingsPage() {
     { id: "profile", label: "Profile", icon: UserIcon },
     ...(user.role === "seller" ? [{ id: "earnings", label: "Earnings", icon: DollarSign }] : []),
     { id: "kyc", label: "Identity Verification", icon: Shield },
+    { id: "privacy", label: "Privacy & Social", icon: Shield },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "security", label: "Security", icon: Lock },
   ]
@@ -570,6 +578,57 @@ export default function SettingsPage() {
                       <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-border" />
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTab === "privacy" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Privacy & Social Settings</CardTitle>
+                  <CardDescription>Manage your social visibility and messaging privacy</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSaveProfile} className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                        <div>
+                          <p className="font-medium text-foreground">Message Privacy</p>
+                          <p className="text-sm text-muted-foreground">Only allow messages from people you follow</p>
+                        </div>
+                        <Switch
+                          checked={profileData.acceptOnlyFromFollowed}
+                          onCheckedChange={(val) => setProfileData({ ...profileData, acceptOnlyFromFollowed: val })}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                        <div>
+                          <p className="font-medium text-foreground">Show Followers</p>
+                          <p className="text-sm text-muted-foreground">Allow others to see who follows you</p>
+                        </div>
+                        <Switch
+                          checked={profileData.showFollowers}
+                          onCheckedChange={(val) => setProfileData({ ...profileData, showFollowers: val })}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                        <div>
+                          <p className="font-medium text-foreground">Show Following</p>
+                          <p className="text-sm text-muted-foreground">Allow others to see people you follow</p>
+                        </div>
+                        <Switch
+                          checked={profileData.showFollowing}
+                          onCheckedChange={(val) => setProfileData({ ...profileData, showFollowing: val })}
+                        />
+                      </div>
+                    </div>
+
+                    <Button type="submit" disabled={isSaving}>
+                      {isSaving ? "Saving..." : "Save Privacy Settings"}
+                    </Button>
+                  </form>
                 </CardContent>
               </Card>
             )}

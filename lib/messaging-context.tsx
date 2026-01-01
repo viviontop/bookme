@@ -1,79 +1,116 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useMemo, useRef, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react"
 import { useAuth } from "./auth-context"
-import type { Message, Conversation } from "./types"
+import { Message, Conversation, SocialStats, SocialRelation } from "./types"
 import {
-  sendMessage as sendMessageDB,
   getConversations as getConversationsDB,
   getMessages as getMessagesDB,
-  markAsRead as markAsReadDB
+  sendMessage as sendMessageDB,
+  markAsRead as markAsReadDB,
+  getSocialDataDB,
+  followUser,
+  unfollowUser,
+  blockUser,
+  unblockUser,
+  updateUser as updateUserDB,
+  updateConversationStatus
 } from "@/app/actions"
 
 interface MessagingContextType {
   messages: Message[]
   conversations: Conversation[]
-  sendMessage: (receiverId: string, content: string, fileUrl?: string, fileType?: string) => Promise<void>
+  sendMessage: (receiverId: string, content: string, fileUrl?: string, fileType?: string) => Promise<{ success: boolean, error?: string, message?: Message }>
   getConversation: (userId: string) => Conversation | null
   getMessages: (conversationId: string) => Message[]
   markAsRead: (conversationId: string) => Promise<void>
   getUnreadCount: () => number
+
+  // Social
+  follow: (userId: string) => Promise<void>
+  unfollow: (userId: string) => Promise<void>
+  block: (userId: string) => Promise<void>
+  unblock: (userId: string) => Promise<void>
+  isFollowing: (userId: string) => boolean
+  isBlocking: (userId: string) => boolean
+  isBlockedBy: (userId: string) => boolean
+  getSocialStats: (userId: string) => SocialStats
+  acceptRequest: (conversationId: string) => Promise<void>
+  updatePrivacy: (acceptOnlyFromFollowed: boolean) => Promise<void>
+  setActiveConversation: (conversationId: string | null) => void
 }
 
 const MessagingContext = createContext<MessagingContextType | undefined>(undefined)
 
 export function MessagingProvider({ children }: { readonly children: ReactNode }) {
-  const { user } = useAuth()
+  const { user, updateUser: updateAuthUser } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
+  const [follows, setFollows] = useState<{ following: string[], followers: string[] }>({ following: [], followers: [] })
+  const [blocks, setBlocks] = useState<{ blocking: string[], blockedBy: string[] }>({ blocking: [], blockedBy: [] })
+
   const prevUnreadCount = useRef(0)
   const notificationSound = useRef<HTMLAudioElement | null>(null)
-
-  useEffect(() => {
-    notificationSound.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3")
-  }, [])
-
   const syncState = useRef({
     count: 0,
     unreadSum: 0,
     lastMsgId: null as string | null | undefined
   })
 
-  // Load conversations from DB
+  useEffect(() => {
+    notificationSound.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3")
+  }, [])
+
+  // Load conversations and social data from DB
   useEffect(() => {
     if (!user?.id) return
 
     const loadData = async () => {
-      // Don't poll if the tab is hidden
-      if (document.visibilityState !== 'visible') return
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
 
       try {
-        const dbConversations = await getConversationsDB(user.id)
-        const unreadSum = dbConversations.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0)
-        const lastMsgId = dbConversations.length > 0 ? dbConversations[0].lastMessage?.id : null
+        const [dbConversations, socialData] = await Promise.all([
+          getConversationsDB(user.id),
+          getSocialDataDB(user.id)
+        ])
 
-        // Lightweight comparison against the REF (not a stale closure)
-        const hasChanges =
-          dbConversations.length !== syncState.current.count ||
-          unreadSum !== syncState.current.unreadSum ||
-          lastMsgId !== syncState.current.lastMsgId
+        if (Array.isArray(dbConversations)) {
+          const unreadSum = dbConversations.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0)
+          const lastMsgId = dbConversations.length > 0 ? dbConversations[0].lastMessage?.id : null
 
-        if (hasChanges) {
-          setConversations(dbConversations as any)
+          const hasChanges =
+            dbConversations.length !== syncState.current.count ||
+            unreadSum !== syncState.current.unreadSum ||
+            lastMsgId !== syncState.current.lastMsgId
 
-          if (unreadSum > syncState.current.unreadSum) {
-            notificationSound.current?.play().catch(() => { })
-          }
+          if (hasChanges) {
+            setConversations(dbConversations as any)
 
-          // Update the ref for next interval tick
-          syncState.current = {
-            count: dbConversations.length,
-            unreadSum,
-            lastMsgId
+            if (unreadSum > syncState.current.unreadSum) {
+              notificationSound.current?.play().catch(() => { })
+            }
+
+            syncState.current = {
+              count: dbConversations.length,
+              unreadSum,
+              lastMsgId
+            }
           }
         }
+
+        if (socialData) {
+          setFollows({
+            following: Array.isArray(socialData.following) ? socialData.following : [],
+            followers: Array.isArray(socialData.followers) ? socialData.followers : []
+          })
+          setBlocks({
+            blocking: Array.isArray(socialData.blocking) ? socialData.blocking : [],
+            blockedBy: Array.isArray(socialData.blockedBy) ? socialData.blockedBy : []
+          })
+        }
       } catch (error) {
-        console.error("Failed to load conversations:", error)
+        console.error("Failed to load data:", error)
       }
     }
 
@@ -82,77 +119,33 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     return () => clearInterval(interval)
   }, [user?.id])
 
-  const sendMessage = async (receiverId: string, content: string, fileUrl?: string, fileType?: string) => {
-    if (!user?.id) return
-
-    const result = await sendMessageDB(user.id, receiverId, content, fileUrl, fileType)
-
-    if (result.success && result.message) {
-      const newMessage = result.message as unknown as Message
-      setMessages((prev) => [...prev, newMessage])
-
-      // Update local conversations state
-      const conversationId = newMessage.conversationId
-      setConversations((prev) => {
-        const existing = prev.find(c => c.id === conversationId)
-        if (existing) {
-          return prev.map(c => c.id === conversationId ? {
-            ...c,
-            lastMessage: newMessage,
-            lastMessageAt: newMessage.createdAt,
-          } : c)
-        } else {
-          return [...prev, {
-            id: conversationId,
-            participantIds: [user.id, receiverId].sort(),
-            lastMessage: newMessage,
-            lastMessageAt: newMessage.createdAt,
-            unreadCount: 0
-          }]
-        }
-      })
-    }
-  }
-
-  const getConversation = (userId: string) => {
-    if (!user?.id) return null
-
-    const conversationId = [user.id, userId].sort((a, b) => a.localeCompare(b)).join("-")
-    return conversations.find((c) => c.id === conversationId) || null
-  }
-
-  const getMessages = (conversationId: string) => {
-    // Fetch messages from DB if not already loaded for this conversation
-    // This is a bit tricky with the current state-based approach
-    // We'll update the effect to fetch messages when a conversation is active
-    return messages
-      .filter((m) => m.conversationId === conversationId)
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-  }
-
-  // Effect to fetch messages when messages array is requested for a specific conversation
-  // Or simpler: just fetch messages for all conversations periodically? 
-  // No, let's fetch messages for the current view.
-  // The ChatContent component calls getMessages(conversationId)
-
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
-
+  // Faster polling for active chat
   useEffect(() => {
-    if (!activeConversationId) return
+    if (!activeConversationId) {
+      setMessages([])
+      return
+    }
 
     const loadMessages = async () => {
-      // Don't poll if hidden
-      if (document.visibilityState !== 'visible') return
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
 
       try {
         const dbMessages = await getMessagesDB(activeConversationId)
-        // Only update if message count or last message ID changed - very fast check
-        const hasNewMessages = dbMessages.length !== messages.length ||
+        if (!Array.isArray(dbMessages)) return
+
+        // Filter out pending messages that might have been confirmed by polling
+        const hasNewMessages = dbMessages.length !== messages.filter(m => m.status !== 'pending').length ||
           (dbMessages.length > 0 && messages.length > 0 &&
             dbMessages[dbMessages.length - 1].id !== messages[messages.length - 1].id)
 
         if (hasNewMessages) {
-          setMessages(dbMessages as any)
+          // If we had pending messages, we want to keep them if they aren't in dbMessages yet
+          setMessages((prev) => {
+            const pending = prev.filter(m => m.status === 'pending')
+            // Only keep pending that aren't somehow already in dbMessages (rare)
+            const uniquePending = pending.filter(pm => !dbMessages.some(dm => dm.content === pm.content && dm.createdAt === pm.createdAt))
+            return [...dbMessages as any, ...uniquePending]
+          })
         }
       } catch (error) {
         console.error("Failed to load messages:", error)
@@ -160,62 +153,174 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     }
 
     loadMessages()
-    const interval = setInterval(loadMessages, 3000) // 3s is plenty fast for polling
+    const interval = setInterval(loadMessages, 3000)
     return () => clearInterval(interval)
   }, [activeConversationId, messages.length])
 
-  // We need to expose a way to set the active conversation
-  // But wait, getMessages is called by the component.
-  // Let's modify getMessages to also trigger a sync.
+  const sendMessage = async (receiverId: string, content: string, fileUrl?: string, fileType?: string) => {
+    if (!user?.id) return { success: false, error: "Not authenticated" }
 
-  const getMessagesWithSync = (conversationId: string) => {
-    if (activeConversationId !== conversationId) {
-      setActiveConversationId(conversationId)
+    // Optimistic Update
+    const tempId = `temp-${Date.now()}`
+    const optimisticMessage: Message = {
+      id: tempId,
+      conversationId: activeConversationId || "pending",
+      senderId: user.id,
+      receiverId,
+      content,
+      fileUrl,
+      fileType,
+      createdAt: new Date().toISOString(),
+      read: false,
+      status: "pending"
     }
-    return getMessages(conversationId)
+
+    setMessages((prev) => [...prev, optimisticMessage])
+
+    // Trigger server call
+    try {
+      const result = await sendMessageDB(user.id, receiverId, content, fileUrl, fileType)
+
+      if (result.success && result.message) {
+        // Replace optimistic message with real message
+        setMessages((prev) =>
+          prev.map((m) => m.id === tempId ? { ...result.message, status: "sent" } as any : m)
+        )
+
+        // Refresh conversations to update last message
+        const dbConversations = await getConversationsDB(user.id)
+        if (Array.isArray(dbConversations)) {
+          setConversations(dbConversations as any)
+        }
+        return result as any
+      } else {
+        // Mark as error
+        setMessages((prev) =>
+          prev.map((m) => m.id === tempId ? { ...m, status: "error" } : m)
+        )
+        return { success: false, error: result.error || "Failed to send message" }
+      }
+    } catch (err) {
+      setMessages((prev) =>
+        prev.map((m) => m.id === tempId ? { ...m, status: "error" } : m)
+      )
+      return { success: false, error: "Network error" }
+    }
+  }
+
+  const follow = async (userId: string) => {
+    if (!user?.id) return
+    const result = await followUser(user.id, userId)
+    if (result.success) {
+      setFollows(prev => ({ ...prev, following: [...prev.following, userId] }))
+    }
+  }
+
+  const unfollow = async (userId: string) => {
+    if (!user?.id) return
+    const result = await unfollowUser(user.id, userId)
+    if (result.success) {
+      setFollows(prev => ({ ...prev, following: prev.following.filter(id => id !== userId) }))
+    }
+  }
+
+  const block = async (userId: string) => {
+    if (!user?.id) return
+    const result = await blockUser(user.id, userId)
+    if (result.success) {
+      setBlocks(prev => ({ ...prev, blocking: [...prev.blocking, userId] }))
+      setFollows(prev => ({
+        following: prev.following.filter(id => id !== userId),
+        followers: prev.followers.filter(id => id !== userId)
+      }))
+    }
+  }
+
+  const unblock = async (userId: string) => {
+    if (!user?.id) return
+    const result = await unblockUser(user.id, userId)
+    if (result.success) {
+      setBlocks(prev => ({ ...prev, blocking: prev.blocking.filter(id => id !== userId) }))
+    }
+  }
+
+  const getConversation = (userId: string) => {
+    return conversations.find(c => c.participantIds.includes(userId)) || null
+  }
+
+  const getMessages = (conversationId: string) => {
+    return messages.filter(m => m.conversationId === conversationId)
   }
 
   const markAsRead = async (conversationId: string) => {
     if (!user?.id) return
-
     await markAsReadDB(conversationId, user.id)
-
-    // Update local state
-    setMessages((prev) => prev.map((m) =>
-      m.conversationId === conversationId && m.receiverId === user.id ? { ...m, read: true } : m
-    ))
-
-    setConversations((prev) => prev.map((c) =>
-      c.id === conversationId ? { ...c, unreadCount: 0 } : c
-    ))
+    setConversations((prev) =>
+      prev.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c))
+    )
   }
 
   const getUnreadCount = () => {
-    if (!user?.id) return 0
-
-    return conversations
-      .filter((c) => c.participantIds.includes(user.id))
-      .reduce((sum, c) => sum + c.unreadCount, 0)
+    return conversations.reduce((total, c) => total + (c.unreadCount || 0), 0)
   }
 
-  const value = useMemo(
-    () => ({
-      messages,
-      conversations,
-      sendMessage,
-      getConversation,
-      getMessages: getMessagesWithSync,
-      markAsRead,
-      getUnreadCount,
-    }),
-    [messages, conversations, user?.id, activeConversationId]
-  )
+  const isFollowing = (userId: string) => follows.following.includes(userId)
+  const isBlocking = (userId: string) => blocks.blocking.includes(userId)
+  const isBlockedBy = (userId: string) => blocks.blockedBy.includes(userId)
+
+  const getSocialStats = (userId: string): SocialStats => {
+    if (userId === user?.id) {
+      return { followers: follows.followers.length, following: follows.following.length }
+    }
+    return { followers: 0, following: 0 }
+  }
+
+  const acceptRequest = async (conversationId: string) => {
+    await updateConversationStatus(conversationId, "active")
+    if (user?.id) {
+      const dbConversations = await getConversationsDB(user.id)
+      if (Array.isArray(dbConversations)) {
+        setConversations(dbConversations as any)
+      }
+    }
+  }
+
+  const updatePrivacy = async (acceptOnlyFromFollowed: boolean) => {
+    if (!user?.id) return
+    await updateUserDB(user.id, { acceptOnlyFromFollowed })
+    updateAuthUser({ ...user, acceptOnlyFromFollowed })
+  }
+
+  const setActiveConversation = (id: string | null) => setActiveConversationId(id)
+
+  const value = {
+    messages,
+    conversations,
+    sendMessage,
+    getConversation,
+    getMessages,
+    markAsRead,
+    getUnreadCount,
+    follow,
+    unfollow,
+    block,
+    unblock,
+    isFollowing,
+    isBlocking,
+    isBlockedBy,
+    getSocialStats,
+    acceptRequest,
+    updatePrivacy,
+    setActiveConversation
+  }
 
   return <MessagingContext.Provider value={value}>{children}</MessagingContext.Provider>
 }
 
-export function useMessaging() {
+export const useMessaging = () => {
   const context = useContext(MessagingContext)
-  if (!context) throw new Error("useMessaging must be used within MessagingProvider")
+  if (context === undefined) {
+    throw new Error("useMessaging must be used within a MessagingProvider")
+  }
   return context
 }
