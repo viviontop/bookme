@@ -87,6 +87,8 @@ export interface Message {
   senderId: string
   receiverId: string
   content: string
+  fileUrl?: string
+  fileType?: string
   createdAt: string
   read: boolean
 }

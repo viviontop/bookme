@@ -291,7 +291,7 @@ export async function updateUser(userId: string, data: any) {
     }
 }
 
-export async function sendMessage(senderId: string, receiverId: string, content: string) {
+export async function sendMessage(senderId: string, receiverId: string, content: string, fileUrl?: string, fileType?: string) {
     try {
         // Find or create conversation
         const conversationId = [senderId, receiverId].sort().join("-")
@@ -316,6 +316,8 @@ export async function sendMessage(senderId: string, receiverId: string, content:
                 senderId,
                 receiverId,
                 content,
+                fileUrl,
+                fileType,
                 read: false
             }
         })
@@ -368,6 +370,8 @@ export async function getConversations(userId: string) {
                 lastMessage: c.messages[0] ? {
                     id: c.messages[0].id,
                     content: c.messages[0].content,
+                    fileUrl: c.messages[0].fileUrl,
+                    fileType: c.messages[0].fileType,
                     createdAt: c.messages[0].createdAt.toISOString(),
                     senderId: c.messages[0].senderId,
                     receiverId: c.messages[0].receiverId,

@@ -52,6 +52,8 @@ model Message {
   receiver       User         @relation("ReceivedMessages", fields: [receiverId], references: [id])
   receiverId     String
   content        String
+  fileUrl        String?
+  fileType       String?
   read           Boolean      @default(false)
   createdAt      DateTime     @default(now())
 }

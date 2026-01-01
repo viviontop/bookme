@@ -10,9 +10,11 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { MessageCircle, Send, Search, ChevronLeft } from "lucide-react"
+import { MessageCircle, Send, Search, ChevronLeft, Paperclip, Image as ImageIcon, FileText, Loader2, X } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabaseClient"
+import { toast } from "sonner"
 
 function ChatWithParams() {
   const { user } = useAuth()
@@ -24,6 +26,9 @@ function ChatWithParams() {
   const [messageInput, setMessageInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<{ file: File, preview: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Check for userId in URL params
@@ -81,10 +86,57 @@ function ChatWithParams() {
     )
   }
 
-  const handleSendMessage = () => {
-    if (!messageInput.trim() || !selectedUserId) return
-    sendMessage(selectedUserId, messageInput)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      toast.error("File size must be less than 10MB")
+      return
+    }
+
+    const preview = URL.createObjectURL(file)
+    setSelectedFile({ file, preview })
+  }
+
+  const handleSendMessage = async () => {
+    if ((!messageInput.trim() && !selectedFile) || !selectedUserId) return
+
+    let fileUrl = undefined
+    let fileType = undefined
+
+    if (selectedFile) {
+      setIsUploading(true)
+      try {
+        const fileExt = selectedFile.file.name.split('.').pop()
+        const fileName = `${crypto.randomUUID()}.${fileExt}`
+        const filePath = `${user.id}/${fileName}`
+
+        const { error: uploadError, data } = await supabase.storage
+          .from('chat-attachments')
+          .upload(filePath, selectedFile.file)
+
+        if (uploadError) throw uploadError
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat-attachments')
+          .getPublicUrl(filePath)
+
+        fileUrl = publicUrl
+        fileType = selectedFile.file.type
+      } catch (error) {
+        console.error("Upload error:", error)
+        toast.error("Failed to upload file")
+        setIsUploading(false)
+        return
+      }
+    }
+
+    await sendMessage(selectedUserId, messageInput, fileUrl, fileType)
     setMessageInput("")
+    setSelectedFile(null)
+    setIsUploading(false)
+    if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
   const getConversationUser = (conversation: typeof conversations[0]) => {
@@ -182,9 +234,12 @@ function ChatWithParams() {
                           )}
                         </div>
                         {conversation.lastMessage && (
-                          <p className="text-sm text-muted-foreground truncate">
-                            {conversation.lastMessage.content}
-                          </p>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground truncate">
+                            {conversation.lastMessage.fileUrl && (
+                              <ImageIcon className="h-3 w-3 shrink-0" />
+                            )}
+                            <span className="truncate">{conversation.lastMessage.content || (conversation.lastMessage.fileUrl ? "Sent a file" : "")}</span>
+                          </div>
                         )}
                         {conversation.lastMessageAt && (
                           <p className="text-xs text-muted-foreground mt-1">
@@ -253,9 +308,34 @@ function ChatWithParams() {
                             </AvatarFallback>
                           </Avatar>
                         )}
-                        <div className={`rounded-lg px-4 py-2 ${isOwn ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                          <p className="text-sm">{message.content}</p>
-                          <p className={`text-xs mt-1 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                        <div className={`rounded-xl px-4 py-2 ${isOwn ? "bg-primary text-primary-foreground shadow-md" : "bg-card border shadow-sm"}`}>
+                          {message.fileUrl && (
+                            <div className="mb-2">
+                              {message.fileType?.startsWith('image/') ? (
+                                <div className="relative group">
+                                  <img
+                                    src={message.fileUrl}
+                                    alt="Message attachment"
+                                    className="rounded-lg max-w-full max-h-[300px] object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                                    onClick={() => window.open(message.fileUrl, '_blank')}
+                                  />
+                                </div>
+                              ) : (
+                                <a
+                                  href={message.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`flex items-center gap-2 p-3 rounded-lg border text-sm hover:underline transition-colors ${isOwn ? "bg-primary-foreground/10 border-primary-foreground/20" : "bg-muted border-border"
+                                    }`}
+                                >
+                                  <FileText className="h-5 w-5 shrink-0" />
+                                  <span className="truncate max-w-[200px]">Download File</span>
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          {message.content && <p className="text-sm whitespace-pre-wrap">{message.content}</p>}
+                          <p className={`text-[10px] mt-1 text-right italic ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                             {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
@@ -266,24 +346,66 @@ function ChatWithParams() {
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
-            <div className="border-t border-border p-4">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  handleSendMessage()
-                }}
-                className="flex gap-2"
-              >
-                <Input
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1"
-                />
-                <Button type="submit" disabled={!messageInput.trim()}>
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
+            <div className="border-t border-border p-4 bg-card/50 backdrop-blur-sm">
+              <div className="flex flex-col gap-2">
+                {selectedFile && (
+                  <div className="relative inline-block w-24 h-24 mb-2">
+                    {selectedFile.file.type.startsWith('image/') ? (
+                      <img src={selectedFile.preview} alt="Upload preview" className="w-full h-full object-cover rounded-md border" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-muted rounded-md border">
+                        <FileText className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                      onClick={() => setSelectedFile(null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    handleSendMessage()
+                  }}
+                  className="flex gap-2 items-center"
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 hover:bg-muted"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    <Paperclip className="h-5 w-5 text-muted-foreground" />
+                  </Button>
+                  <Input
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1"
+                    disabled={isUploading}
+                  />
+                  <Button type="submit" disabled={(!messageInput.trim() && !selectedFile) || isUploading} className="shrink-0">
+                    {isUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </form>
+              </div>
             </div>
           </>
         ) : (

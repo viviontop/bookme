@@ -13,10 +13,10 @@ import {
 interface MessagingContextType {
   messages: Message[]
   conversations: Conversation[]
-  sendMessage: (receiverId: string, content: string) => void
+  sendMessage: (receiverId: string, content: string, fileUrl?: string, fileType?: string) => Promise<void>
   getConversation: (userId: string) => Conversation | null
   getMessages: (conversationId: string) => Message[]
-  markAsRead: (conversationId: string) => void
+  markAsRead: (conversationId: string) => Promise<void>
   getUnreadCount: () => number
 }
 
@@ -47,10 +47,10 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     return () => clearInterval(interval)
   }, [user?.id])
 
-  const sendMessage = async (receiverId: string, content: string) => {
+  const sendMessage = async (receiverId: string, content: string, fileUrl?: string, fileType?: string) => {
     if (!user?.id) return
 
-    const result = await sendMessageDB(user.id, receiverId, content)
+    const result = await sendMessageDB(user.id, receiverId, content, fileUrl, fileType)
 
     if (result.success && result.message) {
       const newMessage = result.message as unknown as Message
