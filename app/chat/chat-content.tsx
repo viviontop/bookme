@@ -94,6 +94,7 @@ function ChatWithParams() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showChatOnMobile, setShowChatOnMobile] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isSending, setIsSending] = useState(false)
   const [selectedFile, setSelectedFile] = useState<{ file: File, preview: string } | null>(null)
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -164,8 +165,9 @@ function ChatWithParams() {
   }
 
   const handleSendMessage = async () => {
-    if ((!messageInput.trim() && !selectedFile) || !selectedUserId) return
+    if ((!messageInput.trim() && !selectedFile) || !selectedUserId || isSending || isUploading) return
 
+    setIsSending(true)
     let fileUrl = undefined
     let fileType = undefined
 
@@ -204,6 +206,7 @@ function ChatWithParams() {
     setMessageInput("")
     setSelectedFile(null)
     setIsUploading(false)
+    setIsSending(false)
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
@@ -418,13 +421,15 @@ function ChatWithParams() {
                     onChange={(e) => setMessageInput(e.target.value)}
                     placeholder="Type a message..."
                     className="flex-1"
-                    disabled={isUploading}
+                    disabled={isUploading || isSending}
                   />
-                  <Button type="submit" disabled={(!messageInput.trim() && !selectedFile) || isUploading} className="shrink-0 gap-2">
-                    {isUploading ? (
+                  <Button type="submit" disabled={(!messageInput.trim() && !selectedFile) || isUploading || isSending} className="shrink-0 gap-2">
+                    {isUploading || isSending ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-xs hidden sm:inline">Uploading...</span>
+                        <span className="text-xs hidden sm:inline">
+                          {isUploading ? "Uploading..." : "Sending..."}
+                        </span>
                       </>
                     ) : (
                       <Send className="h-4 w-4" />

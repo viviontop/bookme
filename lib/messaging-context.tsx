@@ -33,25 +33,44 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     notificationSound.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3")
   }, [])
 
-  // Load data from DB
+  const syncState = useRef({
+    count: 0,
+    unreadSum: 0,
+    lastMsgId: null as string | null | undefined
+  })
+
+  // Load conversations from DB
   useEffect(() => {
     if (!user?.id) return
 
     const loadData = async () => {
+      // Don't poll if the tab is hidden
+      if (document.visibilityState !== 'visible') return
+
       try {
         const dbConversations = await getConversationsDB(user.id)
+        const unreadSum = dbConversations.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0)
+        const lastMsgId = dbConversations.length > 0 ? dbConversations[0].lastMessage?.id : null
 
-        // Only update if something changed to reduce re-renders
-        const newUnreadCount = dbConversations.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0)
+        // Lightweight comparison against the REF (not a stale closure)
+        const hasChanges =
+          dbConversations.length !== syncState.current.count ||
+          unreadSum !== syncState.current.unreadSum ||
+          lastMsgId !== syncState.current.lastMsgId
 
-        if (JSON.stringify(dbConversations) !== JSON.stringify(conversations)) {
+        if (hasChanges) {
           setConversations(dbConversations as any)
 
-          // Play sound if unread count increased
-          if (newUnreadCount > prevUnreadCount.current) {
+          if (unreadSum > syncState.current.unreadSum) {
             notificationSound.current?.play().catch(() => { })
           }
-          prevUnreadCount.current = newUnreadCount
+
+          // Update the ref for next interval tick
+          syncState.current = {
+            count: dbConversations.length,
+            unreadSum,
+            lastMsgId
+          }
         }
       } catch (error) {
         console.error("Failed to load conversations:", error)
@@ -59,9 +78,9 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     }
 
     loadData()
-    const interval = setInterval(loadData, 4000)
+    const interval = setInterval(loadData, 5000)
     return () => clearInterval(interval)
-  }, [user?.id, conversations])
+  }, [user?.id])
 
   const sendMessage = async (receiverId: string, content: string, fileUrl?: string, fileType?: string) => {
     if (!user?.id) return
@@ -122,10 +141,17 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     if (!activeConversationId) return
 
     const loadMessages = async () => {
+      // Don't poll if hidden
+      if (document.visibilityState !== 'visible') return
+
       try {
         const dbMessages = await getMessagesDB(activeConversationId)
-        // Only update if message count or last message ID changed
-        if (dbMessages.length !== messages.length || (dbMessages.length > 0 && messages.length > 0 && dbMessages[dbMessages.length - 1].id !== messages[messages.length - 1].id)) {
+        // Only update if message count or last message ID changed - very fast check
+        const hasNewMessages = dbMessages.length !== messages.length ||
+          (dbMessages.length > 0 && messages.length > 0 &&
+            dbMessages[dbMessages.length - 1].id !== messages[messages.length - 1].id)
+
+        if (hasNewMessages) {
           setMessages(dbMessages as any)
         }
       } catch (error) {
@@ -134,7 +160,7 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     }
 
     loadMessages()
-    const interval = setInterval(loadMessages, 2000) // Faster polling for active chat
+    const interval = setInterval(loadMessages, 3000) // 3s is plenty fast for polling
     return () => clearInterval(interval)
   }, [activeConversationId, messages.length])
 
