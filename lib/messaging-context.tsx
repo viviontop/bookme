@@ -15,7 +15,9 @@ import {
   unblockUser,
   updateUser as updateUserDB,
   updateConversationStatus,
-  getSocialStats as getSocialStatsDB
+  getSocialStats as getSocialStatsDB,
+  deleteMessage as deleteMessageDB,
+  forwardMessage as forwardMessageDB
 } from "@/app/actions"
 
 interface MessagingContextType {
@@ -39,6 +41,8 @@ interface MessagingContextType {
   acceptRequest: (conversationId: string) => Promise<void>
   updatePrivacy: (acceptOnlyFromFollowed: boolean) => Promise<void>
   setActiveConversation: (conversationId: string | null) => void
+  deleteMessage: (messageId: string) => Promise<{ success: boolean, error?: string }>
+  forwardMessage: (messageId: string, receiverId: string) => Promise<{ success: boolean, error?: string }>
 }
 
 const MessagingContext = createContext<MessagingContextType | undefined>(undefined)
@@ -313,6 +317,46 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
 
   const setActiveConversation = useCallback((id: string | null) => setActiveConversationId(id), [])
 
+  const deleteMessage = useCallback(async (messageId: string) => {
+    if (!user?.id) return { success: false, error: "Not authenticated" }
+    try {
+      const result = await deleteMessageDB(messageId, user.id)
+      if (result.success) {
+        setMessages(prev => prev.filter(m => m.id !== messageId))
+        // Update conversation last message if needed
+        const dbConversations = await getConversationsDB(user.id)
+        if (Array.isArray(dbConversations)) {
+          setConversations(dbConversations as any)
+        }
+      }
+      return result
+    } catch (err) {
+      return { success: false, error: "Network error" }
+    }
+  }, [user?.id])
+
+  const forwardMessage = useCallback(async (messageId: string, receiverId: string) => {
+    if (!user?.id) return { success: false, error: "Not authenticated" }
+    try {
+      const result = await forwardMessageDB(messageId, receiverId, user.id)
+      if (result.success && result.message) {
+        // If we forward to the current active conversation, update messages
+        const conversation = conversations.find(c => c.participantIds.includes(receiverId))
+        if (conversation && conversation.id === activeConversationId) {
+          setMessages(prev => [...prev, result.message as any])
+        }
+
+        const dbConversations = await getConversationsDB(user.id)
+        if (Array.isArray(dbConversations)) {
+          setConversations(dbConversations as any)
+        }
+      }
+      return result
+    } catch (err) {
+      return { success: false, error: "Network error" }
+    }
+  }, [user?.id, activeConversationId, conversations])
+
   const contextValue = useMemo(() => ({
     messages,
     conversations,
@@ -331,7 +375,9 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     getSocialStats,
     acceptRequest,
     updatePrivacy,
-    setActiveConversation
+    setActiveConversation,
+    deleteMessage,
+    forwardMessage
   }), [
     messages,
     conversations,
@@ -350,7 +396,9 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
     getSocialStats,
     acceptRequest,
     updatePrivacy,
-    setActiveConversation
+    setActiveConversation,
+    deleteMessage,
+    forwardMessage
   ])
 
   return <MessagingContext.Provider value={contextValue}>{children}</MessagingContext.Provider>

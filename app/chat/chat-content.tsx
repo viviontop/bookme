@@ -50,6 +50,15 @@ import {
 } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Forward } from "lucide-react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
 import { toast } from "sonner"
@@ -69,7 +78,9 @@ export function ChatContent() {
     isBlockedBy,
     acceptRequest,
     updatePrivacy,
-    setActiveConversation
+    setActiveConversation,
+    deleteMessage,
+    forwardMessage
   } = useMessaging()
   const { user } = useAuth()
   const { users: allUsers } = useData()
@@ -84,6 +95,8 @@ export function ChatContent() {
   const [selectedFile, setSelectedFile] = useState<{ file: File, preview: string } | null>(null)
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"conversations" | "requests">("conversations")
+  const [forwardMessageId, setForwardMessageId] = useState<string | null>(null)
+  const [forwardSearchQuery, setForwardSearchQuery] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -479,6 +492,12 @@ export function ChatContent() {
                     isOwn={message.senderId === user?.id}
                     sender={allUsers?.find((u: any) => u.id === message.senderId)}
                     onImageClick={(url: string) => setLightboxImage(url)}
+                    onDelete={(id) => {
+                      if (confirm("Are you sure you want to delete this message?")) {
+                        deleteMessage(id)
+                      }
+                    }}
+                    onForward={(id) => setForwardMessageId(id)}
                   />
                 ))}
                 <div ref={messagesEndRef} className="h-4" />
@@ -629,6 +648,71 @@ export function ChatContent() {
           </div>
         </div>
       )}
+
+      {/* Forward Message Dialog */}
+      <Dialog open={!!forwardMessageId} onOpenChange={(open) => !open && setForwardMessageId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Forward Message</DialogTitle>
+            <DialogDescription>
+              Choose a conversation to forward this message to.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search contacts..."
+                className="pl-9"
+                value={forwardSearchQuery}
+                onChange={(e) => setForwardSearchQuery(e.target.value)}
+              />
+            </div>
+            <ScrollArea className="h-[300px] border rounded-md">
+              <div className="p-2 space-y-1">
+                {conversations
+                  .filter((c: any) => c.status === "active")
+                  .map((c: any) => {
+                    const otherUserId = c.participantIds?.find((id: string) => id !== user?.id)
+                    const otherUser = allUsers.find((u: any) => u.id === otherUserId)
+                    if (!otherUser) return null
+
+                    const fullName = `${otherUser.firstName} ${otherUser.lastName}`.toLowerCase()
+                    if (forwardSearchQuery && !fullName.includes(forwardSearchQuery.toLowerCase())) return null
+
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={async () => {
+                          if (forwardMessageId) {
+                            const result = await forwardMessage(forwardMessageId, otherUser.id)
+                            if (result.success) {
+                              toast.success("Message forwarded")
+                              setForwardMessageId(null)
+                            } else {
+                              toast.error(result.error || "Failed to forward message")
+                            }
+                          }
+                        }}
+                        className="flex items-center gap-3 p-2 rounded-lg w-full text-left hover:bg-muted transition-colors"
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={otherUser.avatar} />
+                          <AvatarFallback>{otherUser.firstName?.[0]}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{otherUser.firstName} {otherUser.lastName}</span>
+                        <Forward className="ml-auto h-4 w-4 text-muted-foreground" />
+                      </button>
+                    )
+                  })}
+              </div>
+            </ScrollArea>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setForwardMessageId(null)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

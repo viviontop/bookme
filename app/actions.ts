@@ -850,3 +850,36 @@ export async function updateAvailability(sellerId: string, slots: any[]) {
         return { success: false, error: String(error) }
     }
 }
+
+export async function deleteMessage(messageId: string, userId: string) {
+    try {
+        const message = await (prisma as any).message.findUnique({
+            where: { id: messageId }
+        })
+
+        if (!message) return { success: false, error: "Message not found" }
+        if (message.senderId !== userId) return { success: false, error: "Unauthorized" }
+
+        await (prisma as any).message.delete({
+            where: { id: messageId }
+        })
+
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: String(error) }
+    }
+}
+
+export async function forwardMessage(messageId: string, receiverId: string, userId: string) {
+    try {
+        const sourceMessage = await (prisma as any).message.findUnique({
+            where: { id: messageId }
+        })
+
+        if (!sourceMessage) return { success: false, error: "Source message not found" }
+
+        return await sendMessage(userId, receiverId, sourceMessage.content, sourceMessage.fileUrl, sourceMessage.fileType)
+    } catch (error) {
+        return { success: false, error: String(error) }
+    }
+}

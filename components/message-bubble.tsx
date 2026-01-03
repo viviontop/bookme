@@ -1,13 +1,22 @@
 import { memo } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { FileText, Maximize2, Check, Clock, AlertCircle } from "lucide-react"
+import { FileText, Maximize2, Check, CheckCheck, Clock, AlertCircle, Trash2, Forward, MoreVertical } from "lucide-react"
 import { Message } from "@/lib/types"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
 
 interface MessageBubbleProps {
     message: Message
     isOwn: boolean
     sender: any
     onImageClick: (url: string) => void
+    onDelete?: (id: string) => void
+    onForward?: (id: string) => void
 }
 
 // Helper for relative time
@@ -22,9 +31,9 @@ const formatRelativeTime = (date: Date | string) => {
     return msgDate.toLocaleDateString()
 }
 
-export const MessageBubble = memo(({ message, isOwn, sender, onImageClick }: MessageBubbleProps) => {
+export const MessageBubble = memo(({ message, isOwn, sender, onImageClick, onDelete, onForward }: MessageBubbleProps) => {
     return (
-        <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+        <div className={`flex ${isOwn ? "justify-end" : "justify-start"} group/bubble`}>
             <div className={`flex gap-2 max-w-[80%] ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                 {!isOwn && (
                     <Avatar className="h-8 w-8 shrink-0">
@@ -74,12 +83,46 @@ export const MessageBubble = memo(({ message, isOwn, sender, onImageClick }: Mes
                                     <Clock className="h-3 w-3 text-primary-foreground/50 animate-pulse" />
                                 ) : message.status === "error" ? (
                                     <AlertCircle className="h-3 w-3 text-red-400" />
+                                ) : message.read ? (
+                                    <div className="flex items-center gap-0.5">
+                                        <span className="text-[9px] text-primary-foreground/90 font-medium">Read</span>
+                                        <CheckCheck className="h-3.5 w-3.5 text-green-400" />
+                                    </div>
                                 ) : (
-                                    <Check className="h-3 w-3 text-primary-foreground/80" />
+                                    <div className="flex items-center gap-0.5">
+                                        <span className="text-[9px] text-primary-foreground/70">Sent</span>
+                                        <Check className="h-3 w-3 text-primary-foreground/80" />
+                                    </div>
                                 )}
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* Action Menu */}
+                <div className={`flex items-start opacity-0 group-hover/bubble:opacity-100 transition-opacity ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align={isOwn ? "end" : "start"}>
+                            <DropdownMenuItem onClick={() => onForward?.(message.id)}>
+                                <Forward className="mr-2 h-4 w-4" />
+                                <span>Forward</span>
+                            </DropdownMenuItem>
+                            {isOwn && (
+                                <DropdownMenuItem
+                                    onClick={() => onDelete?.(message.id)}
+                                    className="text-destructive focus:text-destructive"
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Delete</span>
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
         </div>
