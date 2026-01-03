@@ -73,25 +73,25 @@ export const MessageBubble = memo(({ message, isOwn, sender, onImageClick, onDel
                         </div>
                     )}
                     {message.content && <p className="text-sm break-words whitespace-pre-wrap">{message.content}</p>}
-                    <div className="flex items-center justify-end gap-1 mt-1">
-                        <p className={`text-[10px] ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                    <div className="flex items-center justify-end gap-3 mt-1.5 px-0.5">
+                        <p className={`text-[10px] ${isOwn ? "text-primary-foreground/60" : "text-muted-foreground/80"}`}>
                             {formatRelativeTime(message.createdAt)}
                         </p>
                         {isOwn && (
                             <div className="flex items-center">
                                 {message.status === "pending" ? (
-                                    <Clock className="h-3 w-3 text-primary-foreground/50 animate-pulse" />
+                                    <Clock className="h-3 w-3 text-primary-foreground/40 animate-pulse" />
                                 ) : message.status === "error" ? (
                                     <AlertCircle className="h-3 w-3 text-red-400" />
                                 ) : message.read ? (
-                                    <div className="flex items-center gap-0.5">
-                                        <span className="text-[9px] text-primary-foreground/90 font-medium">Read</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-[9px] text-primary-foreground/90 font-bold uppercase tracking-wider">Read</span>
                                         <CheckCheck className="h-3.5 w-3.5 text-green-400" />
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-0.5">
-                                        <span className="text-[9px] text-primary-foreground/70">Sent</span>
-                                        <Check className="h-3 w-3 text-primary-foreground/80" />
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-[9px] text-primary-foreground/70 uppercase tracking-widest">Sent</span>
+                                        <Check className="h-3 w-3 text-primary-foreground/60" />
                                     </div>
                                 )}
                             </div>

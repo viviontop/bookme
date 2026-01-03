@@ -144,8 +144,10 @@ export function MessagingProvider({ children }: { readonly children: ReactNode }
           // Use refs/state outside to compare messages
           const existingNonPending = prev.filter(m => m.status !== 'pending')
           const hasChanges = dbMessages.length !== existingNonPending.length ||
-            (dbMessages.length > 0 && existingNonPending.length > 0 &&
-              dbMessages[dbMessages.length - 1].id !== existingNonPending[existingNonPending.length - 1].id)
+            dbMessages.some((dm, i) => {
+              const em = existingNonPending[i]
+              return !em || em.id !== dm.id || em.read !== dm.read
+            })
 
           if (!hasChanges) return prev
 
