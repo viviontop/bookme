@@ -658,10 +658,12 @@ export async function getMessages(conversationId: string) {
     try {
         const messages = await (prisma as any).message.findMany({
             where: { conversationId },
-            orderBy: { createdAt: "asc" }
+            orderBy: { createdAt: "desc" },
+            take: 50
         })
 
-        return messages.map((m: any) => ({
+        // Reverse to maintain chronological order for UI
+        return messages.reverse().map((m: any) => ({
             ...m,
             createdAt: m.createdAt.toISOString()
         }))

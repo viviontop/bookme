@@ -139,9 +139,16 @@ export function ChatContent() {
 
   useEffect(() => {
     if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      const isInitialLoad = messagesEndRef.current?.dataset.loaded !== 'true'
+      messagesEndRef.current?.scrollIntoView({ behavior: isInitialLoad ? "auto" : "smooth" })
+      if (messagesEndRef.current) messagesEndRef.current.dataset.loaded = 'true'
     }
-  }, [messages.length])
+  }, [messages.length, selectedUserId])
+
+  // Reset scroll state when conversation changes
+  useEffect(() => {
+    if (messagesEndRef.current) messagesEndRef.current.dataset.loaded = 'false'
+  }, [selectedUserId])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
